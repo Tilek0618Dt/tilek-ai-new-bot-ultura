@@ -1,0 +1,12 @@
+import telebot
+import openai
+import os
+
+from premium import is_premium, premium_command, handle_payment, pre_checkout, successful_payment   # ← бул жаңы сап
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+bot = telebot.TeleBot(BOT_TOKEN)
+
+openai.api_key = os.getenv("OPENROUTER_API_KEY")
+
+# калганы эски код...
