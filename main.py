@@ -72,8 +72,8 @@ def start(message):
 # START BOT
 # =========================
 if name == "main":
-    print("🤖 Tilek AI Bot иштеп баштады...")
-    bot.infinity_polling()
+    print("🔥 Tilek AI иштеп жатат...")
+    bot.polling(none_stop=True)
 
 from premium import register_handlers
 
