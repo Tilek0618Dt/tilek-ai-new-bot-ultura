@@ -65,6 +65,6 @@ register_handlers(bot)
 # =========================
 # START BOT
 # =========================
-if name == "main":
+if __name__ == "__main__":
     print("🔥 Tilek AI иштеп жатат...")
     bot.polling(none_stop=True)
