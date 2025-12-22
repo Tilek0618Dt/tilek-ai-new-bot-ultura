@@ -1,0 +1,8 @@
+pycache/
+*.pyc
+.env
+*.env
+.vscode/
+.idea/
+.DS_Store
+.cache/
