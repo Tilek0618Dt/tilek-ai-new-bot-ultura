@@ -1,35 +1,39 @@
-# 1. IMPORT
 import telebot
 import requests
 import os
+from premium import register_handlers, is_premium, add_free_usage, free_usage_left
 
-from premium import register_handlers, is_premium
-
-# 2. ТОКЕНДЕР
+# ТОКЕНДЕР
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# 🔥 3. УШУЛ САП ЭҢ МААНИЛҮҮ
+# PREMIUM логикасын кошуу
 register_handlers(bot)
 
 SYSTEM_PROMPT = """
-Сен — Тилек AI...
+Сен — Тилек AI, Кыргызстандын биринчи толук кыргызча жасалма интеллектисиң.
+Кыргызча, орусча, англисче сүйлөйсүң.
 """
 
-# 4. START
-@bot.message_handler(commands=['start'])
-def start(message):
-    bot.reply_to(message, "Салам! Мен Тилек AI 😎")
-
-# 5. 👇 СЕНИН КОДУҢ УШУЛ ЖЕРГЕ КЕЛЕТ
+# Free лимит + AI жооп
 @bot.message_handler(func=lambda message: True)
 def answer(message):
+    user_id = message.from_user.id
 
-    if is_premium(message.from_user.id):
-        max_tokens = 1200
+    if is_premium(user_id):
+        plan = premium_users[user_id]
+        if plan == "Plus":
+            max_tokens = 1200
+        elif plan == "Pro":
+            max_tokens = 2000
+        else:
+            max_tokens = 400
     else:
+        add_free_usage(user_id)
+        if free_usage_left(user_id) <= 0:
+            bot.reply_to(message, "⚠️ Free лимити бүткөн! Premium сатып алыңыз")
+            return
         max_tokens = 400
 
     try:
@@ -46,17 +50,17 @@ def answer(message):
                     {"role": "user", "content": message.text}
                 ],
                 "max_tokens": max_tokens
-            }
+            },
+            timeout=60
         )
-
-        reply = response.json()["choices"][0]["message"]["content"]
-
+        data = response.json()
+        reply = data["choices"][0]["message"]["content"]
     except Exception as e:
-        reply = "⚠️ Ката чыкты: " + str(e)
+        reply = f"⚠️ Ката чыкты: {e}"
 
     bot.reply_to(message, reply)
 
-# 6. RUN
+# RUN
 if __name__ == "__main__":
     print("🔥 Tilek AI иштеп жатат...")
     bot.polling(none_stop=True)
