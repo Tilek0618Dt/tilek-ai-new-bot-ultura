@@ -1,106 +1,61 @@
-import telebot
-import requests
-import os
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils import executor
+import json
 
-from premium import register_handlers, is_premium
-from users import load_users, save_users
+from countries import COUNTRIES
 
-# === TOKENS ===
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+TOKEN = "BOT_TOKEN_HERE"
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = Bot(token=TOKEN)
+dp = Dispatcher(bot)
 
-# Premium кнопкалар / төлөмдөр
-register_handlers(bot)
+def save_user(user_id, country, lang):
+    with open("users.json", "r", encoding="utf-8") as f:
+        users = json.load(f)
 
-SYSTEM_PROMPT = """
-Сен — Тилек AI.
-Кыргызча, орусча, англисче так жооп бер.
-"""
+    users[str(user_id)] = {
+        "country": country,
+        "lang": lang,
+        "plan": "free"
+    }
 
-# === START ===
-@bot.message_handler(commands=['start'])
-def start(message):
-    users = load_users()
-    uid = str(message.from_user.id)
+    with open("users.json", "w", encoding="utf-8") as f:
+        json.dump(users, f, indent=2, ensure_ascii=False)
 
-    if uid not in users:
-        users[uid] = {
-            "plan": "free",
-            "count": 0
-        }
-        save_users(users)
+@dp.message_handler(commands=["start"])
+async def start(message: types.Message):
+    kb = InlineKeyboardMarkup(row_width=2)
 
-    bot.send_message(
-        message.chat.id,
-        "👋 Кош келдиңиз!\n\n"
-        "🆓 FREE — 20 суроо\n"
-        "⭐ PLUS — кеңейтилген мүмкүнчүлүктөр\n"
-        "👑 PRO — толук мүмкүнчүлүктөр\n\n"
-        "Суроо жазыңыз же Premium тандаңыз 👇"
-    )
-
-# === AI ANSWER ===
-@bot.message_handler(func=lambda message: True)
-def answer(message):
-    users = load_users()
-    uid = str(message.from_user.id)
-
-    if uid not in users:
-        users[uid] = {"plan": "free", "count": 0}
-
-    plan = users[uid]["plan"]
-
-    # FREE
-    if plan == "free":
-        if users[uid]["count"] >= 20:
-            bot.reply_to(
-                message,
-                "⚠️ Free лимити бүткөн!\n\n"
-                "⭐ PLUS же 👑 PRO сатып алыңыз."
+    for c in COUNTRIES[:20]:  # азыр 20, кийин пагинация
+        kb.add(
+            InlineKeyboardButton(
+                text=c["name"],
+                callback_data=f"country_{c['code']}"
             )
-            save_users(users)
-            return
-        users[uid]["count"] += 1
-        max_tokens = 400
-
-    # PLUS
-    elif plan == "plus":
-        max_tokens = 1200
-
-    # PRO
-    elif plan == "pro":
-        max_tokens = 2000
-
-    save_users(users)
-
-    try:
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "openai/gpt-4o-mini",
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": message.text}
-                ],
-                "max_tokens": max_tokens
-            },
-            timeout=60
         )
 
-        reply = response.json()["choices"][0]["message"]["content"]
+    await message.answer(
+        "🌍 Choose your country (350+ available):",
+        reply_markup=kb
+    )
 
-    except Exception as e:
-        reply = f"⚠️ Ката чыкты: {e}"
+@dp.callback_query_handler(lambda call: call.data.startswith("country_"))
+async def country_selected(call: types.CallbackQuery):
+    code = call.data.split("_")[1]
 
-    bot.reply_to(message, reply)
+    country = next(c for c in COUNTRIES if c["code"] == code)
 
-# === RUN ===
+    save_user(
+        call.from_user.id,
+        country["name"],
+        country["lang"]
+    )
+
+    await call.message.answer(
+        f"✅ Country selected: {country['name']}\n"
+        f"🌐 Language set automatically"
+    )
+
 if __name__ == "__main__":
-    print("🔥 Tilek AI иштеп жатат...")
-    bot.polling(none_stop=True)
+    executor.start_polling(dp)
