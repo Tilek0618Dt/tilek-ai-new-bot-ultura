@@ -9,9 +9,9 @@ from plans import get_plan, set_plan
 BOT_TOKEN = "СЕНИН_BOT_TOKEN"
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 
-# =========================
+# ==================================================
 # /start → ӨЛКӨ ТАНДОО
-# =========================
+# ==================================================
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
@@ -23,41 +23,42 @@ def start(message):
 
     markup = types.InlineKeyboardMarkup(row_width=2)
 
+    # 350+ өлкө (азыр languages.py канча бар болсо ошону алат)
     for code, data in list(COUNTRIES.items())[:350]:
         markup.add(
             types.InlineKeyboardButton(
-                f"{data['flag']} {data['name']}",
+                text=f"{data['flag']} {data['name']}",
                 callback_data=f"country_{code}"
             )
         )
 
     bot.send_message(
         message.chat.id,
-        "🌍 *Өлкөңүздү тандаңыз:*",
+        "🌍 *Өз өлкөңүздү тандаңыз:*",
         reply_markup=markup
     )
 
-# =========================
+# ==================================================
 # ӨЛКӨ САКТОО
-# =========================
+# ==================================================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("country_"))
-def save_country(call):
-    country_code = call.data.split("_")[1]
+def choose_country(call):
+    country_code = call.data.replace("country_", "")
     country = COUNTRIES[country_code]
 
     save_user(
         user_id=call.from_user.id,
         country=country_code,
-        language=country['lang'],
+        language=country["lang"],
         plan="free"
     )
 
-    bot.answer_callback_query(call.id, "✅ Сакталды")
+    bot.answer_callback_query(call.id, "✅ Өлкө сакталды")
     show_main_menu(call.message.chat.id)
 
-# =========================
+# ==================================================
 # БАШКЫ МЕНЮ
-# =========================
+# ==================================================
 def show_main_menu(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("💬 Суроо берүү")
@@ -66,18 +67,20 @@ def show_main_menu(chat_id):
 
     bot.send_message(
         chat_id,
-        "🤖 *Tilek AI даяр!*",
+        "🤖 *Tilek AI даяр!* \nМенюдан тандаңыз 👇",
         reply_markup=markup
     )
 
-# =========================
+# ==================================================
 # PREMIUM МЕНЮ
-# =========================
+# ==================================================
 @bot.message_handler(func=lambda m: m.text == "⭐️ Premium")
 def premium_menu(message):
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("⭐ PLUS – 8$", callback_data="plan_plus"))
-    markup.add(types.InlineKeyboardButton("👑 PRO – 18$", callback_data="plan_pro"))
+    markup.add(
+        types.InlineKeyboardButton("⭐ PLUS – 8$", callback_data="plan_plus"),
+        types.InlineKeyboardButton("👑 PRO – 18$", callback_data="plan_pro")
+    )
 
     bot.send_message(
         message.chat.id,
@@ -85,22 +88,40 @@ def premium_menu(message):
         reply_markup=markup
     )
 
-# =========================
-# PLAN ТАНДОО (АЗЫР ЛОГИКА ГАНА)
-# =========================
+# ==================================================
+# PLAN ТАНДОО (АЗЫРЧА ДЕМО)
+# ==================================================
 @bot.callback_query_handler(func=lambda call: call.data in ["plan_plus", "plan_pro"])
 def choose_plan(call):
-    plan = "plus" if call.data == "plan_plus" else "pro"
+    if call.data == "plan_plus":
+        plan = "plus"
+    else:
+        plan = "pro"
+
     set_plan(call.from_user.id, plan)
 
-    bot.answer_callback_query(call.id, "✅ План активдүү (демо)")
+    bot.answer_callback_query(call.id, "✅ План активдешти")
     bot.send_message(
         call.message.chat.id,
-        f"🎉 *{plan.upper()}* планы активдешти!"
+        f"🎉 *{plan.upper()}* планы активдүү!\n\n"
+        "Төлөм кошулганда автомат иштейт 💳"
     )
 
-# =========================
-# START BOT
-# =========================
+# ==================================================
+# СУРОО БЕРҮҮ (КИЙИН AI КОШУЛАТ)
+# ==================================================
+@bot.message_handler(func=lambda m: m.text == "💬 Суроо берүү")
+def ask_question(message):
+    plan = get_plan(message.from_user.id)
+
+    bot.send_message(
+        message.chat.id,
+        f"✍️ Сурооңузду жазыңыз\n\n"
+        f"📦 План: *{plan.upper()}*"
+    )
+
+# ==================================================
+# БОТТУ ИШКЕ КИРГИЗҮҮ
+# ==================================================
 print("🔥 Tilek AI старт алды")
 bot.infinity_polling()
