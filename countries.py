@@ -1,14 +1,36 @@
 # countries.py
 
 COUNTRIES = [
-    {"code": "KG", "name": "🇰🇬 Kyrgyzstan", "lang": "ky"}, 
-    {"code": "KZ", "name": "🇰🇿 Kazakhstan", "lang": "ru"},
-    {"code": "UZ", "name": "🇺🇿 Uzbekistan", "lang": "uz"},
-    {"code": "RU", "name": "🇷🇺 Russia", "lang": "ru"},
-    {"code": "TR", "name": "🇹🇷 Turkey", "lang": "tr"},
-    {"code": "US", "name": "🇺🇸 United States", "lang": "en"},
-    {"code": "DE", "name": "🇩🇪 Germany", "lang": "en"},
-    {"code": "FR", "name": "🇫🇷 France", "lang": "en"},
-    # ...
-    # бул жерге 350+ өлкө / аймак кошулат
+    ("🇰🇬", "Кыргызстан", "ky"),
+    ("🇷🇺", "Россия", "ru"),
+    ("🇰🇿", "Казахстан", "kk"),
+    ("🇺🇿", "Узбекистан", "uz"),
+    ("🇹🇷", "Турция", "tr"),
+    ("🇺🇸", "United States", "en"),
+    ("🇬🇧", "United Kingdom", "en"),
+    ("🇩🇪", "Germany", "de"),
+    ("🇫🇷", "France", "fr"),
+    ("🇮🇹", "Italy", "it"),
+    ("🇪🇸", "Spain", "es"),
+    ("🇨🇳", "China", "zh"),
+    ("🇯🇵", "Japan", "ja"),
+    ("🇰🇷", "South Korea", "ko"),
+    ("🇮🇳", "India", "hi"),
+    ("🇧🇷", "Brazil", "pt"),
+    ("🇦🇪", "UAE", "ar"),
+    ("🇸🇦", "Saudi Arabia", "ar"),
+    ("🇲🇾", "Malaysia", "ms"),
+    ("🇮🇩", "Indonesia", "id"),
+    ("🇵🇭", "Philippines", "en"),
+    ("🇹🇭", "Thailand", "th"),
+    ("🇻🇳", "Vietnam", "vi"),
+    ("🇵🇱", "Poland", "pl"),
+    ("🇳🇱", "Netherlands", "nl"),
+    ("🇸🇪", "Sweden", "sv"),
+    ("🇳🇴", "Norway", "no"),
+    ("🇫🇮", "Finland", "fi"),
+    ("🇨🇦", "Canada", "en"),
+    ("🇦🇺", "Australia", "en"),
 ]
+
+# ⚠️ Бул тизме кийин 350+ болуп кеңейтилет
