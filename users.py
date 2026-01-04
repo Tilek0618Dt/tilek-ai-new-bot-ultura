@@ -1,5 +1,3 @@
-# users.py
-
 _users = {}
 
 def get_user(user_id):
