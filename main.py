@@ -1,7 +1,8 @@
 import telebot
 from telebot import types
 
-from config import BOT_TOKEN 
+from config import BOT_TOKEN
+from users import get_user, save_user, set_plan
 from plans import is_plus, is_pro
 from languages import COUNTRIES
 from ai import ai_answer
