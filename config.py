@@ -1,4 +1,6 @@
-BOT_TOKEN = "СЕНИН_BOT_TOKEN"
+import os
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 DEFAULT_PLAN = "free"
 
