@@ -4,7 +4,7 @@ from telebot import types
 from config import BOT_TOKEN
 from users import get_user, save_user, set_plan
 from plans import is_plus, is_pro
-from languages import COUNTRIES
+from languages import COUNTRIES, t
 from ai import ai_answer
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
@@ -16,7 +16,7 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 def start(message):
     user = get_user(message.from_user.id)
     if user:
-        show_menu(message.chat.id)
+        show_menu(message.from_user.id, message.chat.id)
         return
 
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -30,7 +30,7 @@ def start(message):
 
     bot.send_message(
         message.chat.id,
-        "🌍 *Өлкөңүздү тандаңыз:*",
+        t("start", "ky"),
         reply_markup=markup
     )
 
@@ -43,12 +43,15 @@ def save_country(call):
         return
 
     save_user(call.from_user.id, code, c["lang"])
-    show_menu(call.message.chat.id)
+    show_menu(call.from_user.id, call.message.chat.id)
 
 # ======================
 # МЕНЮ
 # ======================
-def show_menu(chat_id):
+def show_menu(user_id, chat_id):
+    user = get_user(user_id)
+    lang = user.get("lang", "en")
+
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("💬 Суроо берүү")
     kb.add("⭐️ Premium", "🌐 Тил")
@@ -56,7 +59,7 @@ def show_menu(chat_id):
 
     bot.send_message(
         chat_id,
-        "🤖 *Tilek AI даяр!*",
+        f"*{t('menu_ready', lang)}*",
         reply_markup=kb
     )
 
@@ -92,19 +95,23 @@ def buy(call):
 # ======================
 @bot.message_handler(func=lambda m: m.text == "💬 Суроо берүү")
 def ask(message):
+    user = get_user(message.from_user.id)
+    lang = user.get("lang", "en")
+
     bot.send_message(
         message.chat.id,
-        "✍️ Сурооңузду жазыңыз"
+        t("ask", lang)
     )
 
 @bot.message_handler(content_types=["text"])
 def chat(message):
     user = get_user(message.from_user.id)
     if not user:
-        show_menu(message.chat.id)
+        show_menu(message.from_user.id, message.chat.id)
         return
 
-    answer = ai_answer(message.text)
+    lang = user.get("lang", "en")
+    answer = ai_answer(message.text, lang)
 
     if is_plus(user):
         answer += "\n\n⚡️ *PLUS артыкчылык*"
