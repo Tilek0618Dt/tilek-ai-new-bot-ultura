@@ -22,6 +22,6 @@ def grok_answer(text, lang="ky", is_pro=False):
         return f"❌ Ката: {str(e)}"
 
 # Төмөндөгү тестти оңдо:
-if name == "main":  # эки подчёркивание!!
+if __name__ == "__main__":  # эки подчёркивание!!
     savol = input("Сурооңузду жазыңыз: ")
     print(grok_answer(savol, lang="ky"))
