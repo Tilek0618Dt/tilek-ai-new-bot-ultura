@@ -6,8 +6,6 @@ from users import get_user, save_user, set_plan
 from plans import is_plus, is_pro
 from languages import COUNTRIES
 from ai import ai_answer
-from search import web_search
-from media import voice_to_text, analyze_image
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 
@@ -16,25 +14,35 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 # ======================
 @bot.message_handler(commands=["start"])
 def start(message):
-    if get_user(message.from_user.id):
+    user = get_user(message.from_user.id)
+    if user:
         show_menu(message.chat.id)
         return
 
     markup = types.InlineKeyboardMarkup(row_width=2)
-    for code, c in list(COUNTRIES.items())[:350]:
-        markup.add(types.InlineKeyboardButton(
-            f"{c['flag']} {c['name']}",
-            callback_data=f"country_{code}"
-        ))
+    for code, c in COUNTRIES.items():
+        markup.add(
+            types.InlineKeyboardButton(
+                f"{c['flag']} {c['name']}",
+                callback_data=f"country_{code}"
+            )
+        )
 
-    bot.send_message(message.chat.id, "🌍 Өлкөңүздү тандаңыз:", reply_markup=markup)
+    bot.send_message(
+        message.chat.id,
+        "🌍 *Өлкөңүздү тандаңыз:*",
+        reply_markup=markup
+    )
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("country_"))
 def save_country(call):
     code = call.data.split("_")[1]
-    c = COUNTRIES[code]
+    c = COUNTRIES.get(code)
+
+    if not c:
+        return
+
     save_user(call.from_user.id, code, c["lang"])
-    bot.answer_callback_query(call.id, "✅ Сакталды")
     show_menu(call.message.chat.id)
 
 # ======================
@@ -43,47 +51,67 @@ def save_country(call):
 def show_menu(chat_id):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("💬 Суроо берүү")
-    kb.add("⭐ Premium", "🌐 Тил")
+    kb.add("⭐️ Premium", "🌐 Тил")
     kb.add("🆘 Жардам")
-    bot.send_message(chat_id, "🤖 *Tilek AI даяр!*", reply_markup=kb)
+
+    bot.send_message(
+        chat_id,
+        "🤖 *Tilek AI даяр!*",
+        reply_markup=kb
+    )
 
 # ======================
 # PREMIUM
 # ======================
-@bot.message_handler(func=lambda m: m.text == "⭐ Premium")
+@bot.message_handler(func=lambda m: m.text == "⭐️ Premium")
 def premium(message):
     kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton("⭐ PLUS – 8$", callback_data="buy_plus"))
-    kb.add(types.InlineKeyboardButton("👑 PRO – 18$", callback_data="buy_pro"))
-    bot.send_message(message.chat.id, "*💎 Premium пландар:*", reply_markup=kb)
+    kb.add(
+        types.InlineKeyboardButton("⭐️ PLUS – 8$", callback_data="buy_plus"),
+        types.InlineKeyboardButton("👑 PRO – 18$", callback_data="buy_pro")
+    )
 
-@bot.callback_query_handler(func=lambda c: c.data in ["buy_plus", "buy_pro"])
+    bot.send_message(
+        message.chat.id,
+        "*💎 Premium пландар:*",
+        reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data in ("buy_plus", "buy_pro"))
 def buy(call):
     plan = "plus" if call.data == "buy_plus" else "pro"
     set_plan(call.from_user.id, plan)
-    bot.answer_callback_query(call.id, "✅ DEMO активдүү")
-    bot.send_message(call.message.chat.id, f"🎉 *{plan.upper()}* планы актив!")
+
+    bot.send_message(
+        call.message.chat.id,
+        f"🎉 *{plan.upper()}* планы активдешти!\n_(Демо режим)_"
+    )
 
 # ======================
 # ЧАТ
 # ======================
 @bot.message_handler(func=lambda m: m.text == "💬 Суроо берүү")
 def ask(message):
-    bot.send_message(message.chat.id, "Сурооңузду жазыңыз ✍️")
+    bot.send_message(
+        message.chat.id,
+        "✍️ Сурооңузду жазыңыз"
+    )
 
 @bot.message_handler(content_types=["text"])
 def chat(message):
     user = get_user(message.from_user.id)
     if not user:
+        show_menu(message.chat.id)
         return
 
     answer = ai_answer(message.text)
+
     if is_plus(user):
-        answer += "\n\n⚡ PLUS артыкчылык"
+        answer += "\n\n⚡️ *PLUS артыкчылык*"
     if is_pro(user):
-        answer += "\n\n👑 PRO эксперт режим"
+        answer += "\n\n👑 *PRO эксперт режим*"
 
     bot.send_message(message.chat.id, answer)
 
-print("🔥 Tilek AI DEMO старт алды")
-bot.infinity_polling()
+print("🔥 Tilek AI ишке кирди")
+bot.infinity_polling(skip_pending=True)
