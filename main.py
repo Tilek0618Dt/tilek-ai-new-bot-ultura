@@ -67,10 +67,18 @@ def buy(call):
     bot.answer_callback_query(call.id, f"{plan.upper()} активдешти! 🎉")
     show_menu(call.message)
 
-@bot.message_handler(func=lambda m: m.text in ["💬 Суроо берүү", "🌐 Тил өзгөртүү"])
+@bot.message_handler(func=lambda m: m.text in ["💬 Суроо берүү", "🌐 Тил өзгөртүү", "🆘 Жардам"])
 def handle_menu(message):
     if m.text == "🌐 Тил өзгөртүү":
         start(message)  # кайра өлкө тандоо
+        return
+    elif m.text == "🆘 Жардам":
+        bot.send_message(message.chat.id, "🆘 *Жардам*\n\nБул бот Grok күчү менен иштейт. Суроо бериңиз – чынчыл жана акылдуу жооп аласыз!\n\nПремиум пландар үчүн ⭐️ Premium баскыла.")
+        return
+    else:  # "Суроо берүү"
+        user = get_user(message.from_user.id)
+        lang = user.get("language", "en") if user else "en"
+        bot.send_message(message.chat.id, t('ask_question', lang))
     else:
         user = get_user(message.from_user.id)
         lang = user.get("language", "en") if user else "en"
