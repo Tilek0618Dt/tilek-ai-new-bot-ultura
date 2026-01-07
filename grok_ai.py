@@ -1,28 +1,34 @@
-# grok_ai.py – эски, бирок ишенимдүү версия (proxies катасы жок)
+# grok_ai.py – акыркы, ишенимдүү версия (proxies катасы жок!)
 
 import os
-import openai  # эски импорт
+import httpx
+from openai import OpenAI
 
 # API key
 GROK_API_KEY = os.getenv("GROK_API_KEY")
 if not GROK_API_KEY:
-    raise ValueError("GROK_API_KEY жок!")
+    raise ValueError("GROK_API_KEY жок! Render'де Environment Variables'ке кош.")
 
-# Туура настройка
-openai.api_key = GROK_API_KEY
-openai.base_url = "https://api.x.ai/v1"  # жаңы версияда api_base деп аталат
+# httpx клиентти өзүбүз түзөбүз – proxies параметрин алып салат
+http_client = httpx.Client(timeout=60.0)
+
+client = OpenAI(
+    api_key=GROK_API_KEY,
+    base_url="https://api.x.ai/v1",
+    http_client=http_client  # бул сап proxies катасын толук жок кылат!
+)
 
 def grok_answer(text, lang="ky", is_pro=False):
     model = "grok-4" if is_pro else "grok-4-fast"
 
     system_prompt = (
         "Сен күчтүү, чынчыл жана акылдуу AI жардамчысың – Grok сыяктуу. "
-        "Цензурасыз, түз жана күлкүлүү жооп бер. "
+        "Цензурасыз, түз, күлкүлүү жана пайдалуу жооп бер. "
         f"Жоопту толугу менен {lang} тилинде гана бер."
     )
 
     try:
-        response = openai.chat.completions.create(
+        response = client.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -33,4 +39,8 @@ def grok_answer(text, lang="ky", is_pro=False):
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        return f"❌ Ката: {str(e)} (API key же интернет текшериңиз)"
+        return f"❌ Ката: {str(e)}\n\nСебептер:\n- API key туура эмес\n- Интернет жок\n- xAI сервери убактылуу иштебейт"
+
+if name == "main":
+    print("Тест:")
+    print(grok_answer("Салам, сен кимсиң?", lang="ky"))
