@@ -1,16 +1,15 @@
-# main.py – толук жаңы версия (мурункусун алмаштыр)
+# main.py – толук иштей турган версия
 
 import telebot
 from telebot import types
-import os
 
 from config import BOT_TOKEN
 from users import get_user, save_user, set_plan
 from countries import COUNTRIES
 from languages import t
-from grok_ai import grok_answer  # ← бул кошулду!
+from grok_ai import grok_answer
 from plans import is_plus, is_pro
-from limits import can_use
+# from limits import can_use  # азыр лимитти өчүрдүк тест үчүн
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 
@@ -58,10 +57,14 @@ def premium(message):
     user = get_user(message.from_user.id)
     lang = user.get("language", "en") if user else "en"
     text = "*💎 Премиум пландар:*\n\n⭐️ PLUS – безлимит + тез жооп\n👑 PRO – бардык функциялар + видео генерация"
-    bot.send_message(message.chat.id, t("menu_ready", lang) + "\n\n" + text, reply_markup=kb)
+    bot.send_message(message.chat.id, f"*{t('menu_ready', lang)}*\n\n{text}", reply_markup=kb)
 
-@bot.callback_query_handler(func=lambda c: c.data in ["buy_plus", "buy_pro"])
+@bot.callback_query_handler(func=lambda c: c.data in ["buy_plus", "buy_pro", "back"])
 def buy(call):
+    if call.data == "back":
+        show_menu(call.message)
+        bot.answer_callback_query(call.id)
+        return
     plan = "plus" if call.data == "buy_plus" else "pro"
     set_plan(call.from_user.id, plan)
     bot.answer_callback_query(call.id, f"{plan.upper()} активдешти! 🎉")
@@ -75,25 +78,16 @@ def handle_menu(message):
     elif m.text == "🆘 Жардам":
         bot.send_message(message.chat.id, "🆘 *Жардам*\n\nБул бот Grok күчү менен иштейт. Суроо бериңиз – чынчыл жана акылдуу жооп аласыз!\n\nПремиум пландар үчүн ⭐️ Premium баскыла.")
         return
-    else:  # "Суроо берүү"
+    else:  # "💬 Суроо берүү"
         user = get_user(message.from_user.id)
         lang = user.get("language", "en") if user else "en"
         bot.send_message(message.chat.id, t('ask_question', lang))
-    else:
-        user = get_user(message.from_user.id)
-        lang = user.get("language", "en") if user else "en"
-        bot.send_message(message.chat.id, "✍️ Сурооңузду жазыңыз:")
 
 @bot.message_handler(content_types=["text"])
 def chat(message):
     user = get_user(message.from_user.id)
     if not user or not user.get("language"):
         start(message)
-        return
-
-    # Лимит текшерүү
-    if not can_use(message.from_user.id, _users):  # _users глобалдуу кылыш керек же users.py өзгөрт
-        bot.send_message(message.chat.id, "❌ Күнүмдүк лимит бүттү. ⭐️ Premium алыңыз!")
         return
 
     lang = user["language"]
