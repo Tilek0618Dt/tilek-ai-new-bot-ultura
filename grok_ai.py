@@ -41,6 +41,6 @@ def grok_answer(text, lang="ky", is_pro=False):
     except Exception as e:
         return f"❌ Ката: {str(e)}\n\nСебептер:\n- API key туура эмес\n- Интернет жок\n- xAI сервери убактылуу иштебейт"
 
-if name == "main":
+if __name__ == "__main__":
     print("Тест:")
     print(grok_answer("Салам, сен кимсиң?", lang="ky"))
