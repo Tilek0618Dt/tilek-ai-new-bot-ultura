@@ -5,3 +5,4 @@ gtts==2.5.3
 pydub==0.25.1
 speechrecognition==3.10.4
 elevenlabs==1.3.0  # PRO үчүн
+requests==2.31.0  # Kling API үчүн
