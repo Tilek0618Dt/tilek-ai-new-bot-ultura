@@ -1,3 +1,6 @@
 pyTelegramBotAPI==4.14.0
 requests==2.31.0
 openai==1.30.0
+gtts==2.5.3  # Google Text-to-Speech
+pydub==0.25.1  # үндү иштетүү үчүн
+speechrecognition==3.10.4  # Whisper альтернативасы
