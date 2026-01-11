@@ -1,11 +1,17 @@
-# main.py – акыркы версия + үн менен сүйлөшүү (voice handler кошулду!)
+# main.py – акыркы версия + ҮН PLUS/Pro үчүн гана (PRO үчүн ElevenLabs)
 
 import telebot
 from telebot import types
 import os
 import speech_recognition as sr  # үн → текст
-from gtts import gTTS  # текст → үн
-from pydub import AudioSegment  # ogg → wav конверт
+from gtts import gTTS  # текст → үн (PLUS үчүн)
+from pydub import AudioSegment  # ogg → wav
+
+# PRO үчүн ElevenLabs (супер сапат)
+try:
+    from elevenlabs import ElevenLabs, VoiceSettings
+except ImportError:
+    ElevenLabs = None  # PRO үчүн орнотуу керек
 
 from config import BOT_TOKEN
 from users import get_user, save_user, set_plan
@@ -16,12 +22,20 @@ from plans import is_plus, is_pro
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 
-# Үн билдирүү үчүн recognizer
+# Үн үчүн recognizer
 r = sr.Recognizer()
 
-# Үн менен сүйлөшүү функциясы (voice handler)
+# ElevenLabs PRO үчүн (API key Render'де кош)
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")  # Render Environment Variables'ке кош
+
+# Үн билдирүү handler (PLUS/Pro үчүн гана)
 @bot.message_handler(content_types=['voice'])
 def handle_voice(message):
+    user = get_user(message.from_user.id)
+    if not user or not is_plus(user):
+        bot.send_message(message.chat.id, "❌ Үн менен сүйлөшүү функциясы PLUS (8\( ) же PRO (18 \)) үчүн гана! ⭐️ Premium баскыңыз.")
+        return
+
     try:
         # Үн файлды жүктө
         file_info = bot.get_file(message.voice.file_id)
@@ -29,7 +43,7 @@ def handle_voice(message):
         with open('voice.ogg', 'wb') as f:
             f.write(downloaded_file)
 
-        # OGG → WAV конверт
+        # OGG → WAV
         sound = AudioSegment.from_ogg("voice.ogg")
         sound.export("voice.wav", format="wav")
 
@@ -37,25 +51,37 @@ def handle_voice(message):
         with sr.AudioFile("voice.wav") as source:
             audio = r.record(source)
             try:
-                text = r.recognize_google(audio, language="ky-KG")  # кыргызча
+                text = r.recognize_google(audio, language="ky-KG")
             except sr.UnknownValueError:
-                text = "Үндү түшүнбөдүм, текст менен жазыңызчы 😅"
+                text = "Үндү түшүнбөдүм 😅 Текст менен жазыңызчы."
             except sr.RequestError:
-                text = "Үн сервиси иштебей жатат, текст менен жазыңызчы"
+                text = "Үн сервиси иштебей жатат, текст менен жазыңызчы."
 
         bot.send_message(message.chat.id, f"Сиз айттыңыз: {text}")
 
         # Grok'ко жөнөт
-        user = get_user(message.from_user.id)
         lang = user.get("language", "ky") if user else "ky"
         answer = grok_answer(text, lang=lang, is_pro=is_pro(user))
 
         # Текст жооп
         bot.send_message(message.chat.id, answer)
 
-        # Үн жооп (gTTS аркылуу – кыргызча үн)
-        tts = gTTS(text=answer, lang='ky')
-        tts.save("answer.mp3")
+        # Үн жооп
+        if is_pro(user) and ElevenLabs and ELEVENLABS_API_KEY:
+            # PRO: ElevenLabs – супер сапат
+            audio = ElevenLabs(api_key=ELEVENLABS_API_KEY).generate(
+                text=answer,
+                voice="Rachel",  # кыргызча үн үчүн "Rachel" же башка танда
+                model="eleven_multilingual_v2"
+            )
+            with open("answer.mp3", "wb") as f:
+                for chunk in audio:
+                    f.write(chunk)
+        else:
+            # PLUS: жөнөкөй gTTS
+            tts = gTTS(text=answer, lang='ky')
+            tts.save("answer.mp3")
+
         bot.send_voice(message.chat.id, open("answer.mp3", "rb"))
 
         # Файлдарды тазала
@@ -66,7 +92,7 @@ def handle_voice(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Үн иштетүүдө ката: {str(e)}\nТекст менен жазыңызчы 😅")
 
-# Башка handler'лер (өзгөрүүсүз)
+# Эски handler'лер (толук өзгөрүүсүз калды)
 @bot.message_handler(commands=['start'])
 def start(message):
     user = get_user(message.from_user.id)
@@ -110,7 +136,7 @@ def premium(message):
 
     user = get_user(message.from_user.id)
     lang = user.get("language", "en") if user else "en"
-    text = "*💎 Премиум пландар:*\n\n⭐️ PLUS – безлимит + тез жооп\n👑 PRO – бардык функциялар + видео генерация"
+    text = "*💎 Премиум пландар:*\n\n⭐️ PLUS – безлимит + тез жооп + үн менен сүйлөшүү\n👑 PRO – бардык функциялар + видео генерация + супер үн"
     bot.send_message(message.chat.id, f"*{t('menu_ready', lang)}*\n\n{text}", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data in ["buy_plus", "buy_pro", "back"])
@@ -156,5 +182,5 @@ def chat(message):
 
     bot.send_message(message.chat.id, answer)
 
-print("🔥 Tilek AI ишке кирди – Grok күчү менен!")
+print("🔥 Tilek AI ишке кирди – Grok күчү менен + ҮН (PLUS/Pro үчүн)!")
 bot.infinity_polling()
