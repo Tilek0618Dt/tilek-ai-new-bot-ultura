@@ -1,7 +1,11 @@
-# main.py – акыркы туура версия (иштейт!)
+# main.py – акыркы версия + үн менен сүйлөшүү (voice handler кошулду!)
 
 import telebot
 from telebot import types
+import os
+import speech_recognition as sr  # үн → текст
+from gtts import gTTS  # текст → үн
+from pydub import AudioSegment  # ogg → wav конверт
 
 from config import BOT_TOKEN
 from users import get_user, save_user, set_plan
@@ -12,6 +16,57 @@ from plans import is_plus, is_pro
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 
+# Үн билдирүү үчүн recognizer
+r = sr.Recognizer()
+
+# Үн менен сүйлөшүү функциясы (voice handler)
+@bot.message_handler(content_types=['voice'])
+def handle_voice(message):
+    try:
+        # Үн файлды жүктө
+        file_info = bot.get_file(message.voice.file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        with open('voice.ogg', 'wb') as f:
+            f.write(downloaded_file)
+
+        # OGG → WAV конверт
+        sound = AudioSegment.from_ogg("voice.ogg")
+        sound.export("voice.wav", format="wav")
+
+        # Үн → текст (кыргызча)
+        with sr.AudioFile("voice.wav") as source:
+            audio = r.record(source)
+            try:
+                text = r.recognize_google(audio, language="ky-KG")  # кыргызча
+            except sr.UnknownValueError:
+                text = "Үндү түшүнбөдүм, текст менен жазыңызчы 😅"
+            except sr.RequestError:
+                text = "Үн сервиси иштебей жатат, текст менен жазыңызчы"
+
+        bot.send_message(message.chat.id, f"Сиз айттыңыз: {text}")
+
+        # Grok'ко жөнөт
+        user = get_user(message.from_user.id)
+        lang = user.get("language", "ky") if user else "ky"
+        answer = grok_answer(text, lang=lang, is_pro=is_pro(user))
+
+        # Текст жооп
+        bot.send_message(message.chat.id, answer)
+
+        # Үн жооп (gTTS аркылуу – кыргызча үн)
+        tts = gTTS(text=answer, lang='ky')
+        tts.save("answer.mp3")
+        bot.send_voice(message.chat.id, open("answer.mp3", "rb"))
+
+        # Файлдарды тазала
+        os.remove("voice.ogg")
+        os.remove("voice.wav")
+        os.remove("answer.mp3")
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Үн иштетүүдө ката: {str(e)}\nТекст менен жазыңызчы 😅")
+
+# Башка handler'лер (өзгөрүүсүз)
 @bot.message_handler(commands=['start'])
 def start(message):
     user = get_user(message.from_user.id)
