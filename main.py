@@ -1,4 +1,4 @@
-# main.py – акыркы версия + ҮН PLUS/Pro үчүн гана (PRO үчүн ElevenLabs)
+# main.py – АКЫРКЫ версия: Grok + ҮН (PLUS/Pro) + ВИДЕО (PRO)
 
 import telebot
 from telebot import types
@@ -6,12 +6,13 @@ import os
 import speech_recognition as sr  # үн → текст
 from gtts import gTTS  # текст → үн (PLUS үчүн)
 from pydub import AudioSegment  # ogg → wav
+import requests  # Kling AI видео үчүн
 
-# PRO үчүн ElevenLabs (супер сапат)
+# PRO үчүн ElevenLabs (супер сапаттагы үн) – кааласаң кийин кошобуз
 try:
     from elevenlabs import ElevenLabs, VoiceSettings
 except ImportError:
-    ElevenLabs = None  # PRO үчүн орнотуу керек
+    ElevenLabs = None
 
 from config import BOT_TOKEN
 from users import get_user, save_user, set_plan
@@ -25,66 +26,57 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 # Үн үчүн recognizer
 r = sr.Recognizer()
 
-# ElevenLabs PRO үчүн (API key Render'де кош)
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")  # Render Environment Variables'ке кош
+# API key'лер (Render Environment Variables'тен алынат)
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+KLING_API_KEY = os.getenv("KLING_API_KEY")
 
 # Үн билдирүү handler (PLUS/Pro үчүн гана)
 @bot.message_handler(content_types=['voice'])
 def handle_voice(message):
     user = get_user(message.from_user.id)
     if not user or not is_plus(user):
-        bot.send_message(message.chat.id, "❌ Үн менен сүйлөшүү функциясы PLUS (8\( ) же PRO (18 \)) үчүн гана! ⭐️ Premium баскыңыз.")
+        bot.send_message(message.chat.id, "❌ Үн менен сүйлөшүү PLUS (8\( ) же PRO (18 \)) үчүн гана! ⭐️ Premium баскыңыз.")
         return
 
     try:
-        # Үн файлды жүктө
         file_info = bot.get_file(message.voice.file_id)
         downloaded_file = bot.download_file(file_info.file_path)
         with open('voice.ogg', 'wb') as f:
             f.write(downloaded_file)
 
-        # OGG → WAV
         sound = AudioSegment.from_ogg("voice.ogg")
         sound.export("voice.wav", format="wav")
 
-        # Үн → текст (кыргызча)
         with sr.AudioFile("voice.wav") as source:
             audio = r.record(source)
             try:
                 text = r.recognize_google(audio, language="ky-KG")
-            except sr.UnknownValueError:
+            except:
                 text = "Үндү түшүнбөдүм 😅 Текст менен жазыңызчы."
-            except sr.RequestError:
-                text = "Үн сервиси иштебей жатат, текст менен жазыңызчы."
 
         bot.send_message(message.chat.id, f"Сиз айттыңыз: {text}")
 
-        # Grok'ко жөнөт
         lang = user.get("language", "ky") if user else "ky"
         answer = grok_answer(text, lang=lang, is_pro=is_pro(user))
 
-        # Текст жооп
         bot.send_message(message.chat.id, answer)
 
         # Үн жооп
         if is_pro(user) and ElevenLabs and ELEVENLABS_API_KEY:
-            # PRO: ElevenLabs – супер сапат
             audio = ElevenLabs(api_key=ELEVENLABS_API_KEY).generate(
                 text=answer,
-                voice="Rachel",  # кыргызча үн үчүн "Rachel" же башка танда
+                voice="Rachel",
                 model="eleven_multilingual_v2"
             )
             with open("answer.mp3", "wb") as f:
                 for chunk in audio:
                     f.write(chunk)
         else:
-            # PLUS: жөнөкөй gTTS
             tts = gTTS(text=answer, lang='ky')
             tts.save("answer.mp3")
 
         bot.send_voice(message.chat.id, open("answer.mp3", "rb"))
 
-        # Файлдарды тазала
         os.remove("voice.ogg")
         os.remove("voice.wav")
         os.remove("answer.mp3")
@@ -92,7 +84,40 @@ def handle_voice(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Үн иштетүүдө ката: {str(e)}\nТекст менен жазыңызчы 😅")
 
-# Эски handler'лер (толук өзгөрүүсүз калды)
+# Видео генерация (PRO үчүн гана)
+@bot.message_handler(func=lambda m: is_pro(get_user(m.from_user.id)) and ("видео" in m.text.lower() or m.text.startswith("/video")))
+def handle_video(message):
+    user = get_user(message.from_user.id)
+    if not is_pro(user):
+        bot.send_message(message.chat.id, "❌ Видео генерация PRO (18$) үчүн гана! ⭐️ Premium баскыңыз.")
+        return
+
+    prompt = message.text.replace("/video", "").strip()
+    if not prompt:
+        bot.send_message(message.chat.id, "Видео үчүн текст жазыңыз (мисалы: /video Кыргызстан тоолорунда ат минген адам)")
+        return
+
+    bot.send_message(message.chat.id, "Видео генерацияланууда... 30-60 секунд күтүңүз 🚀")
+
+    try:
+        headers = {"Authorization": f"Bearer {os.getenv('KLING_API_KEY')}"}
+        payload = {
+            "prompt": prompt,
+            "duration": 10,
+            "resolution": "720p"
+        }
+        response = requests.post("https://api.kling.ai/v1/video/generate", json=payload, headers=headers)
+        result = response.json()
+
+        if "video_url" in result:
+            bot.send_video(message.chat.id, result["video_url"])
+            bot.send_message(message.chat.id, "Видео даяр! 🎥")
+        else:
+            bot.send_message(message.chat.id, f"Ката: {result.get('error', 'Белгисиз ката')}")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Видео генерацияда ката: {str(e)}")
+
+# Башка handler'лер (өзгөрүүсүз калды)
 @bot.message_handler(commands=['start'])
 def start(message):
     user = get_user(message.from_user.id)
@@ -182,5 +207,5 @@ def chat(message):
 
     bot.send_message(message.chat.id, answer)
 
-print("🔥 Tilek AI ишке кирди – Grok күчү менен + ҮН (PLUS/Pro үчүн)!")
+print("🔥 Tilek AI ишке кирди – Grok күчү менен + ҮН (PLUS/Pro) + ВИДЕО (PRO)!")
 bot.infinity_polling()
