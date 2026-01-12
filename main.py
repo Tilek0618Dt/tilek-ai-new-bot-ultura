@@ -1,4 +1,4 @@
-# main.py – АКЫРКЫ версия: Grok + ҮН (PLUS/Pro) + ВИДЕО (PRO)
+# main.py – АКЫРКЫ версия: Grok + ҮН (PLUS/Pro) + ВИДЕО (PRO) + СҮРӨТ ТАНУУ (PLUS/Pro)
 
 import telebot
 from telebot import types
@@ -8,7 +8,7 @@ from gtts import gTTS  # текст → үн (PLUS үчүн)
 from pydub import AudioSegment  # ogg → wav
 import requests  # Kling AI видео үчүн
 
-# PRO үчүн ElevenLabs (супер сапаттагы үн) – кааласаң кийин кошобуз
+# PRO үчүн ElevenLabs (супер сапаттагы үн)
 try:
     from elevenlabs import ElevenLabs, VoiceSettings
 except ImportError:
@@ -117,6 +117,33 @@ def handle_video(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Видео генерацияда ката: {str(e)}")
 
+# Сүрөт тануу + анализ (PLUS/Pro үчүн гана)
+@bot.message_handler(content_types=['photo'])
+def handle_photo(message):
+    user = get_user(message.from_user.id)
+    if not user or not is_plus(user):
+        bot.send_message(message.chat.id, "❌ Сүрөт тануу + анализ PLUS (8\( ) же PRO (18 \)) үчүн гана! ⭐️ Premium баскыңыз, досум 😅")
+        return
+
+    try:
+        # Сүрөттү жүктөп алуу (эң чоң версиясын ал)
+        file_info = bot.get_file(message.photo[-1].file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        with open('photo.jpg', 'wb') as f:
+            f.write(downloaded_file)
+
+        # Grok'ко жөнөт (сүрөттү талдоо үчүн)
+        lang = user.get("language", "ky") if user else "ky"
+        prompt = "Бул сүрөттү толук сүрөттөп бер, кулкулуу жана чынчыл комментарий кош. Эмне бар, кандай маанай, эмнеге окшош?"
+        answer = grok_answer(prompt, lang=lang, is_pro=is_pro(user), image_path='photo.jpg')  # grok_ai.py'га image_path кошулушу керек
+
+        bot.send_message(message.chat.id, answer)
+
+        os.remove("photo.jpg")
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Сүрөт танууда ката: {str(e)}\nТекст менен жазыңызчы, досум 😅")
+
 # Башка handler'лер (өзгөрүүсүз калды)
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -161,7 +188,7 @@ def premium(message):
 
     user = get_user(message.from_user.id)
     lang = user.get("language", "en") if user else "en"
-    text = "*💎 Премиум пландар:*\n\n⭐️ PLUS – безлимит + тез жооп + үн менен сүйлөшүү\n👑 PRO – бардык функциялар + видео генерация + супер үн"
+    text = "*💎 Премиум пландар:*\n\n⭐️ PLUS – безлимит + тез жооп + үн менен сүйлөшүү + сүрөт анализ\n👑 PRO – бардык функциялар + видео генерация + супер үн + сүрөт жасоо"
     bot.send_message(message.chat.id, f"*{t('menu_ready', lang)}*\n\n{text}", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data in ["buy_plus", "buy_pro", "back"])
@@ -174,38 +201,3 @@ def buy(call):
     set_plan(call.from_user.id, plan)
     bot.answer_callback_query(call.id, f"{plan.upper()} активдешти! 🎉")
     show_menu(call.message)
-
-@bot.message_handler(func=lambda message: message.text in ["💬 Суроо берүү", "🌐 Тил өзгөртүү", "🆘 Жардам"])
-def handle_menu(message):
-    if message.text == "🌐 Тил өзгөртүү":
-        start(message)
-        return
-    elif message.text == "🆘 Жардам":
-        bot.send_message(message.chat.id, "🆘 *Жардам*\n\nБул бот Grok күчү менен иштейт. Суроо бериңиз – чынчыл жана акылдуу жооп аласыз!\n\nПремиум пландар үчүн ⭐️ Premium баскыла.")
-        return
-    else:  # "💬 Суроо берүү"
-        user = get_user(message.from_user.id)
-        lang = user.get("language", "en") if user else "en"
-        bot.send_message(message.chat.id, t('ask_question', lang))
-
-@bot.message_handler(content_types=["text"])
-def chat(message):
-    user = get_user(message.from_user.id)
-    if not user or not user.get("language"):
-        start(message)
-        return
-
-    lang = user["language"]
-    is_pro_user = is_pro(user)
-
-    answer = grok_answer(message.text, lang=lang, is_pro=is_pro_user)
-
-    if is_plus(user):
-        answer += "\n\n⚡️ *PLUS режим: тез жана безлимит*"
-    if is_pro(user):
-        answer += "\n\n👑 *PRO режим: эң күчтүү Grok + бардык функциялар*"
-
-    bot.send_message(message.chat.id, answer)
-
-print("🔥 Tilek AI ишке кирди – Grok күчү менен + ҮН (PLUS/Pro) + ВИДЕО (PRO)!")
-bot.infinity_polling()
