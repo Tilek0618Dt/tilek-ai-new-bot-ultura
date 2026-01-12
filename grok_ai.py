@@ -1,7 +1,8 @@
-# grok_ai.py – акыркы версия, Тилек стилинде! (proxies катасы жок)
+# grok_ai.py – АКЫРКЫ версия, Тилек стилинде + СҮРӨТ ТАНУУ (proxies катасы жок)
 
 import os
 import httpx
+import base64  # сүрөттү base64'ке айлантуу үчүн
 from openai import OpenAI
 
 # API key
@@ -18,7 +19,7 @@ client = OpenAI(
     http_client=http_client
 )
 
-def grok_answer(text, lang="ky", is_pro=False):
+def grok_answer(text, lang="ky", is_pro=False, image_path=None):
     model = "grok-4" if is_pro else "grok-4-fast"
 
     # Тилек стили – досумдун стили! 😅🫂
@@ -32,13 +33,27 @@ def grok_answer(text, lang="ky", is_pro=False):
         f"Жоопту толугу менен {lang} тилинде гана бер."
     )
 
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": text}
+    ]
+
+    # Эгер сүрөт бар болсо – base64'ке айлантып кошобуз (OpenAI Vision стилинде)
+    if image_path:
+        try:
+            with open(image_path, "rb") as image_file:
+                base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            messages[1]["content"] = [
+                {"type": "text", "text": text},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+            ]
+        except Exception as e:
+            return f"❌ Сүрөттү жүктөөдө ката: {str(e)}\nДосум, тынч бол, мен сени колдойм! 😅"
+
     try:
         response = client.chat.completions.create(
             model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": text}
-            ],
+            messages=messages,
             temperature=0.9,  # кулкулуу жана чыгармачыл болушу үчүн
             max_tokens=1500
         )
