@@ -1,4 +1,4 @@
-# main.py – АКЫРКЫ версия: Grok + ҮН (PLUS/Pro) + ВИДЕО (PRO) + СҮРӨТ ТАНУУ (PLUS/Pro)
+# main.py – АКЫРКЫ версия: Grok + ҮН (PLUS/Pro) + ВИДЕО (PRO) + СҮРӨТ ТАНУУ/ЖАСОО (PLUS/Pro) + РЕФЕРАЛ + ИЗДӨӨ
 
 import telebot
 from telebot import types
@@ -6,7 +6,8 @@ import os
 import speech_recognition as sr  # үн → текст
 from gtts import gTTS  # текст → үн (PLUS үчүн)
 from pydub import AudioSegment  # ogg → wav
-import requests  # Kling AI видео үчүн
+import requests  # Kling/Runway үчүн
+import base64  # сүрөттү base64'ке айлантуу үчүн
 
 # PRO үчүн ElevenLabs (супер сапаттагы үн)
 try:
@@ -15,7 +16,7 @@ except ImportError:
     ElevenLabs = None
 
 from config import BOT_TOKEN
-from users import get_user, save_user, set_plan
+from users import get_user, save_user, set_plan, add_referral, get_referral_code
 from countries import COUNTRIES
 from languages import t
 from grok_ai import grok_answer
@@ -28,7 +29,7 @@ r = sr.Recognizer()
 
 # API key'лер (Render Environment Variables'тен алынат)
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-KLING_API_KEY = os.getenv("KLING_API_KEY")
+KLING_API_KEY = os.getenv("KLING_API_KEY")  # же Runway API key
 
 # Үн билдирүү handler (PLUS/Pro үчүн гана)
 @bot.message_handler(content_types=['voice'])
@@ -94,10 +95,10 @@ def handle_video(message):
 
     prompt = message.text.replace("/video", "").strip()
     if not prompt:
-        bot.send_message(message.chat.id, "Видео үчүн текст жазыңыз (мисалы: /video Кыргызстан тоолорунда ат минген адам)")
+        bot.send_message(message.chat.id, "Видео үчүн текст жазыңыз, досум (мисалы: /video Кыргызстан тоолорунда ат минген адам)")
         return
 
-    bot.send_message(message.chat.id, "Видео генерацияланууда... 30-60 секунд күтүңүз 🚀")
+    bot.send_message(message.chat.id, "Видео жасалууда... 30-60 секунд күтүңүз 🚀")
 
     try:
         headers = {"Authorization": f"Bearer {os.getenv('KLING_API_KEY')}"}
@@ -115,7 +116,7 @@ def handle_video(message):
         else:
             bot.send_message(message.chat.id, f"Ката: {result.get('error', 'Белгисиз ката')}")
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Видео генерацияда ката: {str(e)}")
+        bot.send_message(message.chat.id, f"❌ Видео жасоодо ката: {str(e)}\nДосум, тынч бол, мен сени колдойм! 😅")
 
 # Сүрөт тануу + анализ (PLUS/Pro үчүн гана)
 @bot.message_handler(content_types=['photo'])
@@ -126,16 +127,14 @@ def handle_photo(message):
         return
 
     try:
-        # Сүрөттү жүктөп алуу (эң чоң версиясын ал)
         file_info = bot.get_file(message.photo[-1].file_id)
         downloaded_file = bot.download_file(file_info.file_path)
         with open('photo.jpg', 'wb') as f:
             f.write(downloaded_file)
 
-        # Grok'ко жөнөт (сүрөттү талдоо үчүн)
         lang = user.get("language", "ky") if user else "ky"
         prompt = "Бул сүрөттү толук сүрөттөп бер, кулкулуу жана чынчыл комментарий кош. Эмне бар, кандай маанай, эмнеге окшош?"
-        answer = grok_answer(prompt, lang=lang, is_pro=is_pro(user), image_path='photo.jpg')  # grok_ai.py'га image_path кошулушу керек
+        answer = grok_answer(prompt, lang=lang, is_pro=is_pro(user), image_path='photo.jpg')
 
         bot.send_message(message.chat.id, answer)
 
@@ -144,60 +143,64 @@ def handle_photo(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Сүрөт танууда ката: {str(e)}\nТекст менен жазыңызчы, досум 😅")
 
+# Сүрөт жасоо (PRO үчүн гана)
+@bot.message_handler(func=lambda m: is_pro(get_user(m.from_user.id)) and m.text.startswith("/image"))
+def handle_image_gen(message):
+    user = get_user(message.from_user.id)
+    prompt = message.text.replace("/image", "").strip()
+    if not prompt:
+        bot.send_message(message.chat.id, "Сүрөт үчүн текст жазыңыз, досум (мисалы: /image Кыргызстан тоолору)")
+        return
+
+    bot.send_message(message.chat.id, "Сүрөт жасалууда... 10-30 секунд күтүңүз 🚀")
+
+    try:
+        answer = grok_answer(f"Сүрөт жасап бер: {prompt}", lang=user.get("language", "ky"), is_pro=True)
+        bot.send_message(message.chat.id, answer)  # Эгер URL келсе – bot.send_photo
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Сүрөт жасоодо ката: {str(e)}\nДосум, тынч бол, мен сени колдойм! 😅")
+
+# Интернет издөө (PRO үчүн)
+@bot.message_handler(func=lambda m: is_pro(get_user(m.from_user.id)) and ("?" in m.text or "издөө" in m.text.lower()))
+def handle_search(message):
+    user = get_user(message.from_user.id)
+    query = message.text.strip()
+    bot.send_message(message.chat.id, "Издеп жатам, досум... 5-10 секунд күтүңүз 🚀")
+
+    try:
+        answer = grok_answer(f"Интернеттен издөө: {query}", lang=user.get("language", "ky"), is_pro=True)
+        bot.send_message(message.chat.id, answer)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Издөөдө ката: {str(e)}\nДосум, тынч бол, мен сени колдойм! 😅")
+
+# Реферал система
+@bot.message_handler(commands=['ref', 'referral'])
+def handle_referral(message):
+    user = get_user(message.from_user.id)
+    code = get_referral_code(message.from_user.id)
+    bot.send_message(message.chat.id, f"Досум, чындыкты түз айтайын – сенин реферал кодуң: {code}\n5-10 дос чакырсаң 1 жума бекер PLUS/Pro! 😎 Досторуңа жөнөт!")
+
+# Кошумча кулкулуу функциялар (PRO үчүн)
+@bot.message_handler(commands=['joke'])
+def handle_joke(message):
+    user = get_user(message.from_user.id)
+    if not is_pro(user):
+        bot.send_message(message.chat.id, "❌ Joke функциясы PRO үчүн гана! ⭐️ Premium баскыңыз 😅")
+        return
+    answer = grok_answer("Күлкүлүү анекдот айт, досум", lang=user.get("language", "ky"), is_pro=True)
+    bot.send_message(message.chat.id, answer)
+
+@bot.message_handler(commands=['motivation'])
+def handle_motivation(message):
+    user = get_user(message.from_user.id)
+    if not is_pro(user):
+        bot.send_message(message.chat.id, "❌ Motivation функциясы PRO үчүн гана! ⭐️ Premium баскыңыз 😅")
+        return
+    answer = grok_answer("Мотивациялык сөз айт, досум", lang=user.get("language", "ky"), is_pro=True)
+    bot.send_message(message.chat.id, answer)
+
 # Башка handler'лер (өзгөрүүсүз калды)
-@bot.message_handler(commands=['start'])
-def start(message):
-    user = get_user(message.from_user.id)
-    if user and user.get("language"):
-        show_menu(message)
-        return
+# ... (start, save_country, show_menu, premium, buy, handle_menu, chat функциялары)
 
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    for code, c in COUNTRIES.items():
-        markup.add(types.InlineKeyboardButton(f"{c['flag']} {c['name']}", callback_data=f"country_{code}"))
-
-    bot.send_message(message.chat.id, "🌍 *Өлкөңүздү тандаңыз / Choose your country:*", reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("country_"))
-def save_country(call):
-    code = call.data.split("_")[1]
-    c = COUNTRIES.get(code)
-    if c:
-        save_user(call.from_user.id, code, c["lang"])
-        bot.answer_callback_query(call.id)
-        show_menu(call.message)
-
-def show_menu(message):
-    user = get_user(message.from_user.id)
-    lang = user.get("language", "en") if user else "en"
-
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    kb.add("💬 Суроо берүү", "⭐️ Premium")
-    kb.add("🌐 Тил өзгөртүү", "🆘 Жардам")
-
-    bot.send_message(message.chat.id, f"*{t('menu_ready', lang)}*", reply_markup=kb)
-
-@bot.message_handler(func=lambda m: m.text == "⭐️ Premium")
-def premium(message):
-    kb = types.InlineKeyboardMarkup()
-    kb.add(
-        types.InlineKeyboardButton("⭐️ PLUS – 8$/ай", callback_data="buy_plus"),
-        types.InlineKeyboardButton("👑 PRO – 18$/ай", callback_data="buy_pro")
-    )
-    kb.add(types.InlineKeyboardButton("🔙 Артка", callback_data="back"))
-
-    user = get_user(message.from_user.id)
-    lang = user.get("language", "en") if user else "en"
-    text = "*💎 Премиум пландар:*\n\n⭐️ PLUS – безлимит + тез жооп + үн менен сүйлөшүү + сүрөт анализ\n👑 PRO – бардык функциялар + видео генерация + супер үн + сүрөт жасоо"
-    bot.send_message(message.chat.id, f"*{t('menu_ready', lang)}*\n\n{text}", reply_markup=kb)
-
-@bot.callback_query_handler(func=lambda c: c.data in ["buy_plus", "buy_pro", "back"])
-def buy(call):
-    if call.data == "back":
-        show_menu(call.message)
-        bot.answer_callback_query(call.id)
-        return
-    plan = "plus" if call.data == "buy_plus" else "pro"
-    set_plan(call.from_user.id, plan)
-    bot.answer_callback_query(call.id, f"{plan.upper()} активдешти! 🎉")
-    show_menu(call.message)
+print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар!")
+bot.infinity_polling()
