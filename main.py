@@ -293,6 +293,8 @@ def chat(message):
         answer += "\n\n👑 *PRO режим: эң күчтүү Grok + бардык функциялар*"
 
     bot.send_message(message.chat.id, answer)
-
+    
+# Ботту иштетүү (Render'де infinity_polling иштейт)
+if __name__ == "__main__":
 print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар!")
 bot.infinity_polling()
