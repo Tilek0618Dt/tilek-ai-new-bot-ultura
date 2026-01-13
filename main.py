@@ -292,7 +292,7 @@ def chat(message):
     if is_pro(user):
         answer += "\n\n👑 *PRO режим: эң күчтүү Grok + бардык функциялар*"
 
-    bot.send_message(message.chat.id, answer) 
+    bot.send_message(message.chat.id, answer)
 
 print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар!")
 bot.infinity_polling()
