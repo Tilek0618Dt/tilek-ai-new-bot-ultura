@@ -1,4 +1,4 @@
-# main.py – АКЫРКЫ версия: Grok + ҮН (PLUS/Pro) + ВИДЕО (PRO) + СҮРӨТ ТАНУУ/ЖАСОО (PLUS/Pro) + РЕФЕРАЛ + ИЗДӨӨ
+# main.py – АКЫРКЫ версия: Grok + ҮН (PLUS/Pro) + ВИДЕО (PRO) + СҮРӨТ ТАНУУ/ЖАСОО (PLUS/Pro) + РЕФЕРАЛ + ИЗДӨӨ + JOKE/MOTIVATION
 
 import telebot
 from telebot import types
@@ -156,7 +156,7 @@ def handle_image_gen(message):
 
     try:
         answer = grok_answer(f"Сүрөт жасап бер: {prompt}", lang=user.get("language", "ky"), is_pro=True)
-        bot.send_message(message.chat.id, answer)  # Эгер URL келсе – bot.send_photo
+        bot.send_message(message.chat.id, answer)  # Эгер URL келсе – bot.send_photo(answer)
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Сүрөт жасоодо ката: {str(e)}\nДосум, тынч бол, мен сени колдойм! 😅")
 
@@ -178,7 +178,7 @@ def handle_search(message):
 def handle_referral(message):
     user = get_user(message.from_user.id)
     code = get_referral_code(message.from_user.id)
-    bot.send_message(message.chat.id, f"Досум, чындыкты түз айтайын – сенин реферал кодуң: {code}\n5-10 дос чакырсаң 1 жума бекер PLUS! 😎 Досторуңа жөнөт!")
+    bot.send_message(message.chat.id, f"Досум, чындыкты түз айтайын – сенин реферал кодуң: {code}\n5 дос чакырсаң 1 жума бекер PLUS ачылат! 😎 Досторуңа жөнөт!")
 
 # Кошумча кулкулуу функциялар (PRO үчүн)
 @bot.message_handler(commands=['joke'])
@@ -292,8 +292,7 @@ def chat(message):
     if is_pro(user):
         answer += "\n\n👑 *PRO режим: эң күчтүү Grok + бардык функциялар*"
 
-    bot.send_message(message.chat.id, answer)
+    bot.send_message(message.chat.id, answer) 
 
 print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар!")
 bot.infinity_polling()
-    
