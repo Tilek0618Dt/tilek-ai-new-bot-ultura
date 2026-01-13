@@ -3,13 +3,13 @@
 import telebot
 from telebot import types
 import os
-import speech_recognition as sr  # үн → текст
-from gtts import gTTS  # текст → үн (PLUS үчүн)
-from pydub import AudioSegment  # ogg → wav
-import requests  # Kling/Runway үчүн
-import base64  # сүрөттү base64'ке айлантуу үчүн
+import speech_recognition as sr
+from gtts import gTTS
+from pydub import AudioSegment
+import requests
+import base64
 
-# PRO үчүн ElevenLabs (супер сапаттагы үн)
+# PRO үчүн ElevenLabs
 try:
     from elevenlabs import ElevenLabs, VoiceSettings
 except ImportError:
@@ -24,19 +24,17 @@ from plans import is_plus, is_pro
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 
-# Үн үчүн recognizer
 r = sr.Recognizer()
 
-# API key'лер (Render Environment Variables'тен алынат)
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-KLING_API_KEY = os.getenv("KLING_API_KEY")  # же Runway API key
+KLING_API_KEY = os.getenv("KLING_API_KEY")  # же RUNWAY_API_KEY
 
-# Үн билдирүү handler (PLUS/Pro үчүн гана)
+# Үн менен сүйлөшүү (PLUS/Pro)
 @bot.message_handler(content_types=['voice'])
 def handle_voice(message):
     user = get_user(message.from_user.id)
     if not user or not is_plus(user):
-        bot.send_message(message.chat.id, "❌ Үн менен сүйлөшүү PLUS (8\( ) же PRO (18 \)) үчүн гана! ⭐️ Premium баскыңыз.")
+        bot.send_message(message.chat.id, "❌ Үн менен сүйлөшүү PLUS же PRO үчүн гана! ⭐️ Premium баскыңыз.")
         return
 
     try:
@@ -62,7 +60,6 @@ def handle_voice(message):
 
         bot.send_message(message.chat.id, answer)
 
-        # Үн жооп
         if is_pro(user) and ElevenLabs and ELEVENLABS_API_KEY:
             audio = ElevenLabs(api_key=ELEVENLABS_API_KEY).generate(
                 text=answer,
@@ -85,23 +82,24 @@ def handle_voice(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Үн иштетүүдө ката: {str(e)}\nТекст менен жазыңызчы 😅")
 
-# Видео генерация (PRO үчүн гана)
+# Видео генерация (PRO үчүн – Kling же Runway)
 @bot.message_handler(func=lambda m: is_pro(get_user(m.from_user.id)) and ("видео" in m.text.lower() or m.text.startswith("/video")))
 def handle_video(message):
     user = get_user(message.from_user.id)
     if not is_pro(user):
-        bot.send_message(message.chat.id, "❌ Видео генерация PRO (18$) үчүн гана! ⭐️ Premium баскыңыз.")
+        bot.send_message(message.chat.id, "❌ Видео генерация PRO үчүн гана! ⭐️ Premium баскыңыз.")
         return
 
     prompt = message.text.replace("/video", "").strip()
     if not prompt:
-        bot.send_message(message.chat.id, "Видео үчүн текст жазыңыз, досум (мисалы: /video Кыргызстан тоолорунда ат минген адам)")
+        bot.send_message(message.chat.id, "Видео үчүн текст жазыңыз, досум (мисалы: /video Кыргызстан тоолору)")
         return
 
     bot.send_message(message.chat.id, "Видео жасалууда... 30-60 секунд күтүңүз 🚀")
 
     try:
-        headers = {"Authorization": f"Bearer {os.getenv('KLING_API_KEY')}"}
+        # Kling API (азыр иштейт)
+        headers = {"Authorization": f"Bearer {KLING_API_KEY}"}
         payload = {
             "prompt": prompt,
             "duration": 10,
@@ -118,12 +116,12 @@ def handle_video(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Видео жасоодо ката: {str(e)}\nДосум, тынч бол, мен сени колдойм! 😅")
 
-# Сүрөт тануу + анализ (PLUS/Pro үчүн гана)
+# Сүрөт тануу + анализ (PLUS/Pro)
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
     user = get_user(message.from_user.id)
     if not user or not is_plus(user):
-        bot.send_message(message.chat.id, "❌ Сүрөт тануу + анализ PLUS (8\( ) же PRO (18 \)) үчүн гана! ⭐️ Premium баскыңыз, досум 😅")
+        bot.send_message(message.chat.id, "❌ Сүрөт тануу PLUS же PRO үчүн гана! ⭐️ Premium баскыңыз.")
         return
 
     try:
@@ -143,7 +141,7 @@ def handle_photo(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Сүрөт танууда ката: {str(e)}\nТекст менен жазыңызчы, досум 😅")
 
-# Сүрөт жасоо (PRO үчүн гана)
+# Сүрөт жасоо (PRO үчүн)
 @bot.message_handler(func=lambda m: is_pro(get_user(m.from_user.id)) and m.text.startswith("/image"))
 def handle_image_gen(message):
     user = get_user(message.from_user.id)
@@ -156,7 +154,7 @@ def handle_image_gen(message):
 
     try:
         answer = grok_answer(f"Сүрөт жасап бер: {prompt}", lang=user.get("language", "ky"), is_pro=True)
-        bot.send_message(message.chat.id, answer)  # Эгер URL келсе – bot.send_photo(answer)
+        bot.send_message(message.chat.id, answer)
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Сүрөт жасоодо ката: {str(e)}\nДосум, тынч бол, мен сени колдойм! 😅")
 
@@ -277,7 +275,6 @@ def chat(message):
         start(message)
         return
 
-    # Бонус убактысын текшер
     bonus_msg = check_bonus(message.from_user.id)
     if bonus_msg:
         bot.send_message(message.chat.id, bonus_msg)
@@ -293,8 +290,8 @@ def chat(message):
         answer += "\n\n👑 *PRO режим: эң күчтүү Grok + бардык функциялар*"
 
     bot.send_message(message.chat.id, answer)
-    
-# Ботту иштетүү (Render'де infinity_polling иштейт)
+
 if __name__ == "__main__":
-print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар!")
-bot.infinity_polling()
+    print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар!")
+    bot.infinity_polling()
+    
