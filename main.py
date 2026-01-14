@@ -1,4 +1,4 @@
-# main.py – АКЫРКЫ версия: Grok + ҮН (PLUS/Pro) + ВИДЕО (PRO) + СҮРӨТ ТАНУУ/ЖАСОО (PLUS/Pro) + РЕФЕРАЛ + ИЗДӨӨ + JOKE/MOTIVATION
+# main.py – АКЫРКЫ версия: Grok + ҮН + ВИДЕО + СҮРӨТ + РЕФЕРАЛ + ИЗДӨӨ + JOKE/MOTIVATION + VIP ✨ Video 📸
 
 import telebot
 from telebot import types
@@ -98,7 +98,6 @@ def handle_video(message):
     bot.send_message(message.chat.id, "Видео жасалууда... 30-60 секунд күтүңүз 🚀")
 
     try:
-        # Kling API (азыр иштейт)
         headers = {"Authorization": f"Bearer {KLING_API_KEY}"}
         payload = {
             "prompt": prompt,
@@ -197,7 +196,58 @@ def handle_motivation(message):
     answer = grok_answer("Мотивациялык сөз айт, досум", lang=user.get("language", "ky"), is_pro=True)
     bot.send_message(message.chat.id, answer)
 
-# Башка handler'лер (өзгөрүүсүз калды)
+# VIP ✨ Video 📸 – өзүнчө платный функция
+@bot.message_handler(func=lambda m: m.text == "VIP ✨ Video 📸" or m.text.startswith("/vipvideo"))
+def handle_vip_video(message):
+    user = get_user(message.from_user.id)
+    if not user:
+        bot.send_message(message.chat.id, "Салам, досум! /start менен баштаңыз 😅")
+        return
+
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        types.InlineKeyboardButton("1 видео (30–60 сек) – 14.99$", callback_data="vip_1"),
+        types.InlineKeyboardButton("3 видео пакети – 35$ (скидка!)", callback_data="vip_3"),
+        types.InlineKeyboardButton("5 видео пакети – 55$ (чоң скидка!)", callback_data="vip_5")
+    )
+    kb.add(types.InlineKeyboardButton("🔙 Артка", callback_data="back_menu"))
+
+    bot.send_message(message.chat.id, 
+        "Досум, VIP ✨ Video 📸 – кино стилиндеги күчтүү видео! 🔥\n"
+        "Реклама, Инстаграм, блог үчүн идеалдуу. Кайсы пакетти тандайсың? 😎",
+        reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("vip_"))
+def process_vip_payment(call):
+    package = call.data.split("_")[1]
+
+    prices = {
+        "1": 14.99,
+        "3": 35.00,
+        "5": 55.00
+    }
+
+    amount = prices.get(package, 14.99)
+    bot.answer_callback_query(call.id)
+
+    # Unlimint төлөм линк (верификация бүткөндө реалдуу иштейт)
+    payment_link = f"https://unlimint.com/pay?amount={amount}&user_id={call.from_user.id}&package={package}&description=VIP+Video+{package}+видео"
+    
+    bot.send_message(call.message.chat.id, 
+        f"Досум, төлөм линк даяр! 🚀\n"
+        f"Сумма: {amount}$\n"
+        f"Төлөм жасагандан кийин видеоң дароо жасалат (30–60 сек, Runway сапаты)! 🎥\n\n"
+        f"[Төлөмгө өтүү →]({payment_link})",
+        parse_mode="MarkdownV2"
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data == "back_menu")
+def back_to_menu(call):
+    bot.answer_callback_query(call.id)
+    show_menu(call.message)
+
+# Башка handler'лер
 @bot.message_handler(commands=['start'])
 def start(message):
     user = get_user(message.from_user.id)
@@ -209,7 +259,7 @@ def start(message):
     for code, c in COUNTRIES.items():
         markup.add(types.InlineKeyboardButton(f"{c['flag']} {c['name']}", callback_data=f"country_{code}"))
 
-    bot.send_message(message.chat.id, "🌍 *Өлкөңүздү тандаңыз / Choose your country:*", reply_markup=markup)
+    bot.send_message(message.chat.id, "🌍 Өлкөңүздү тандаңыз / Choose your country:", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("country_"))
 def save_country(call):
@@ -227,8 +277,10 @@ def show_menu(message):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     kb.add("💬 Суроо берүү", "⭐️ Premium")
     kb.add("🌐 Тил өзгөртүү", "🆘 Жардам")
+    kb.add("VIP ✨ Video 📸")  # VIP Video баскычы кошулду
 
-    bot.send_message(message.chat.id, f"*{t('menu_ready', lang)}*", reply_markup=kb)
+    menu_text = t('menu_ready', lang).replace('*', '\\*').replace('_', '\\_')
+    bot.send_message(message.chat.id, menu_text, reply_markup=kb)
 
 @bot.message_handler(func=lambda m: m.text == "⭐️ Premium")
 def premium(message):
@@ -241,8 +293,8 @@ def premium(message):
 
     user = get_user(message.from_user.id)
     lang = user.get("language", "en") if user else "en"
-    text = "*💎 Премиум пландар:*\n\n⭐️ PLUS – безлимит + тез жооп + үн менен сүйлөшүү + сүрөт анализ\n👑 PRO – бардык функциялар + видео генерация + супер үн + сүрөт жасоо"
-    bot.send_message(message.chat.id, f"*{t('menu_ready', lang)}*\n\n{text}", reply_markup=kb)
+    text = t('menu_ready', lang) + "\n\n💎 Премиум пландар:\n\n⭐️ PLUS – безлимит + тез жооп + үн менен сүйлөшүү + сүрөт анализ\n👑 PRO – бардык функциялар + видео генерация + супер үн + сүрөт жасоо"
+    bot.send_message(message.chat.id, text, reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data in ["buy_plus", "buy_pro", "back"])
 def buy(call):
@@ -261,7 +313,7 @@ def handle_menu(message):
         start(message)
         return
     elif message.text == "🆘 Жардам":
-        bot.send_message(message.chat.id, "🆘 *Жардам*\n\nБул бот Grok күчү менен иштейт. Суроо бериңиз – чынчыл жана акылдуу жооп аласыз!\n\nПремиум пландар үчүн ⭐️ Premium баскыла.")
+        bot.send_message(message.chat.id, "🆘 Жардам\n\nБул бот Grok күчү менен иштейт. Суроо бериңиз – чынчыл жана акылдуу жооп аласыз!\n\nПремиум пландар үчүн ⭐️ Premium баскыла.")
         return
     else:  # "💬 Суроо берүү"
         user = get_user(message.from_user.id)
@@ -285,13 +337,15 @@ def chat(message):
     answer = grok_answer(message.text, lang=lang, is_pro=is_pro_user)
 
     if is_plus(user):
-        answer += "\n\n⚡️ *PLUS режим: тез жана безлимит*"
+        answer += "\n\n⚡️ PLUS режим: тез жана безлимит"
     if is_pro(user):
-        answer += "\n\n👑 *PRO режим: эң күчтүү Grok + бардык функциялар*"
+        answer += "\n\n👑 PRO режим: эң күчтүү Grok + бардык функциялар"
 
+    # MarkdownV2 үчүн коопсуз кылуу
+    answer = answer.replace('*', '\\*').replace('_', '\\_').replace('[', '\\[').replace(']', '\\]')
     bot.send_message(message.chat.id, answer)
 
 if __name__ == "__main__":
-    print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар!")
+    print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video!")
     bot.infinity_polling()
     
