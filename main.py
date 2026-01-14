@@ -22,7 +22,7 @@ from languages import t
 from grok_ai import grok_answer
 from plans import is_plus, is_pro
 
-bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
+bot = telebot.TeleBot(BOT_TOKEN, parse_mode="MarkdownV2")
 
 r = sr.Recognizer()
 
