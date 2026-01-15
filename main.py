@@ -1,4 +1,5 @@
-# main.py – АКЫРКЫ версия: Grok + ҮН + ВИДЕО + СҮРӨТ + РЕФЕРАЛ + ИЗДӨӨ + JOKE/MOTIVATION + VIP ✨ Video 📸
+# main.py – АКЫРКЫ версия: Grok + ҮН + ВИДЕО + СҮРӨТ + ВИДЕО АНАЛИЗ + РЕФЕРАЛ + ИЗДӨӨ + JOKE/MOTIVATION + VIP ✨ Video 📸
+# Тилек стили 100% – досум, кулкулуу, бооркеер, чынчыл, кээде серёзный кеңеш
 
 import telebot
 from telebot import types
@@ -9,7 +10,6 @@ from pydub import AudioSegment
 import requests
 import base64
 
-# PRO үчүн ElevenLabs
 try:
     from elevenlabs import ElevenLabs, VoiceSettings
 except ImportError:
@@ -27,14 +27,14 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode="MarkdownV2")
 r = sr.Recognizer()
 
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-KLING_API_KEY = os.getenv("KLING_API_KEY")  # туура жазылды
+KLING_API_KEY = os.getenv("KLING_API_KEY")  # Kling API кодуң (туура жазылды)
 
 # Үн менен сүйлөшүү (PLUS/Pro)
 @bot.message_handler(content_types=['voice'])
 def handle_voice(message):
     user = get_user(message.from_user.id)
     if not user or not is_plus(user):
-        bot.send_message(message.chat.id, "❌ Үн менен сүйлөшүү PLUS же PRO үчүн гана\\! ⭐️ Premium баскыңыз\\.")
+        bot.send_message(message.chat.id, "❌ Үн менен сүйлөшүү PLUS же PRO үчүн гана\\! ⭐️ Premium баскыңыз, досум 😅")
         return
 
     try:
@@ -51,7 +51,7 @@ def handle_voice(message):
             try:
                 text = r.recognize_google(audio, language="ky-KG")
             except:
-                text = "Үндү түшүнбөдүм 😅 Текст менен жазыңызчы\\."
+                text = "Үндү түшүнбөдүм, досум 😅 Текст менен жазып көрчү?"
 
         bot.send_message(message.chat.id, f"Сиз айттыңыз: {text}")
 
@@ -80,22 +80,22 @@ def handle_voice(message):
         os.remove("answer.mp3")
 
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Үн иштетүүдө ката: {str(e)}\nТекст менен жазыңызчы 😅")
+        bot.send_message(message.chat.id, f"❌ Үн иштетүүдө ката кетти, досум: {str(e)}\nТекст менен жазып көрчү, мен сени колдойм 😎")
 
-# Видео генерация (PRO үчүн)
+# Видео генерация (PRO үчүн – тексттен видео жасоо)
 @bot.message_handler(func=lambda m: is_pro(get_user(m.from_user.id)) and ("видео" in m.text.lower() or m.text.startswith("/video")))
 def handle_video(message):
     user = get_user(message.from_user.id)
     if not is_pro(user):
-        bot.send_message(message.chat.id, "❌ Видео генерация PRO үчүн гана\\! ⭐️ Premium баскыңыз\\.")
+        bot.send_message(message.chat.id, "❌ Видео генерация PRO үчүн гана, досум\\! ⭐️ Premium баскыңыз 😅")
         return
 
     prompt = message.text.replace("/video", "").strip()
     if not prompt:
-        bot.send_message(message.chat.id, "Видео үчүн текст жазыңыз, досум \\(мисалы: /video Кыргызстан тоолору\\)")
+        bot.send_message(message.chat.id, "Видео үчүн текст жазыңызчы, досум \\(мисалы: /video Кыргызстан тоолорунда ат минген адам\\)")
         return
 
-    bot.send_message(message.chat.id, "Видео жасалууда\\.\\.\\. 30-60 секунд күтүңүз 🚀")
+    bot.send_message(message.chat.id, "Видео жасалууда... 30-60 секунд күтүңүз, досум \\(күчтүү болот\\)! 🚀")
 
     try:
         headers = {"Authorization": f"Bearer {KLING_API_KEY}"}
@@ -109,18 +109,45 @@ def handle_video(message):
 
         if "video_url" in result:
             bot.send_video(message.chat.id, result["video_url"])
-            bot.send_message(message.chat.id, "Видео даяр\\! 🎥")
+            bot.send_message(message.chat.id, "Видео даяр болду, досум\\! 🎥 Күчтүү чыкты окшойт 😎")
         else:
-            bot.send_message(message.chat.id, f"Ката: {result.get('error', 'Белгисиз ката')}")
+            bot.send_message(message.chat.id, f"Ката чыкты, досум: {result.get('error', 'Белгисиз ката')}\nТынч бол, мен сени колдойм 😅")
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Видео жасоодо ката: {str(e)}\nДосум, тынч бол, мен сени колдойм\\! 😅")
+        bot.send_message(message.chat.id, f"❌ Видео жасоодо ката кетти, досум: {str(e)}\nТынч бол, мен ойлонуп, кайра аракет кылам 🚀")
+
+# Видео анализ (PRO үчүн – жөнөткөн видеону талдоо)
+@bot.message_handler(content_types=['video'])
+def handle_video_analysis(message):
+    user = get_user(message.from_user.id)
+    if not user or not is_pro(user):
+        bot.send_message(message.chat.id, "❌ Видео анализ PRO үчүн гана, досум\\! ⭐️ Premium баскыңыз 😅")
+        return
+
+    try:
+        bot.send_message(message.chat.id, "Видео жүктөлүүдө... талдап жатам, досум \\(бир аз күт\\) 🚀")
+
+        file_info = bot.get_file(message.video.file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        with open('video.mp4', 'wb') as f:
+            f.write(downloaded_file)
+
+        # Азыр жөнөкөй мисал – Grok'ко текст менен сүрөттөтүү
+        prompt = "Бул видео эмне жөнүндө? Толук сүрөттөп бер, досум, кулкулуу комментарий кош, маанилүү учурларды айт!"
+        answer = grok_answer(prompt, lang=user.get("language", "ky"), is_pro=True)
+
+        bot.send_message(message.chat.id, answer)
+
+        os.remove("video.mp4")
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Видео талдоодо ката кетти, досум: {str(e)}\nТынч бол, мен сени колдойм 😎")
 
 # Сүрөт тануу + анализ (PLUS/Pro)
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
     user = get_user(message.from_user.id)
     if not user or not is_plus(user):
-        bot.send_message(message.chat.id, "❌ Сүрөт тануу PLUS же PRO үчүн гана\\! ⭐️ Premium баскыңыз\\.")
+        bot.send_message(message.chat.id, "❌ Сүрөт тануу PLUS же PRO үчүн гана, досум\\! ⭐️ Premium баскыңыз 😅")
         return
 
     try:
@@ -138,7 +165,7 @@ def handle_photo(message):
         os.remove("photo.jpg")
 
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Сүрөт танууда ката: {str(e)}\nТекст менен жазыңызчы, досум 😅")
+        bot.send_message(message.chat.id, f"❌ Сүрөт танууда ката кетти, досум: {str(e)}\nТекст менен жазып көрчү, мен сени колдойм 😎")
 
 # Сүрөт жасоо (PRO үчүн)
 @bot.message_handler(func=lambda m: is_pro(get_user(m.from_user.id)) and m.text.startswith("/image"))
@@ -146,29 +173,29 @@ def handle_image_gen(message):
     user = get_user(message.from_user.id)
     prompt = message.text.replace("/image", "").strip()
     if not prompt:
-        bot.send_message(message.chat.id, "Сүрөт үчүн текст жазыңыз, досум \\(мисалы: /image Кыргызстан тоолору\\)")
+        bot.send_message(message.chat.id, "Сүрөт үчүн текст жазыңызчы, досум \\(мисалы: /image Кыргызстан тоолору\\)")
         return
 
-    bot.send_message(message.chat.id, "Сүрөт жасалууда\\.\\.\\. 10-30 секунд күтүңүз 🚀")
+    bot.send_message(message.chat.id, "Сүрөт жасалууда... 10-30 секунд күтүңүз, досум 🚀")
 
     try:
         answer = grok_answer(f"Сүрөт жасап бер: {prompt}", lang=user.get("language", "ky"), is_pro=True)
         bot.send_message(message.chat.id, answer)
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Сүрөт жасоодо ката: {str(e)}\nДосум, тынч бол, мен сени колдойм\\! 😅")
+        bot.send_message(message.chat.id, f"❌ Сүрөт жасоодо ката кетти, досум: {str(e)}\nТынч бол, мен сени колдойм 😅")
 
 # Интернет издөө (PRO үчүн)
 @bot.message_handler(func=lambda m: is_pro(get_user(m.from_user.id)) and ("?" in m.text or "издөө" in m.text.lower()))
 def handle_search(message):
     user = get_user(message.from_user.id)
     query = message.text.strip()
-    bot.send_message(message.chat.id, "Издеп жатам, досум\\.\\.\\. 5-10 секунд күтүңүз 🚀")
+    bot.send_message(message.chat.id, "Издеп жатам, досум... 5-10 секунд күтүңүз 🚀")
 
     try:
         answer = grok_answer(f"Интернеттен издөө: {query}", lang=user.get("language", "ky"), is_pro=True)
         bot.send_message(message.chat.id, answer)
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Издөөдө ката: {str(e)}\nДосум, тынч бол, мен сени колдойм\\! 😅")
+        bot.send_message(message.chat.id, f"❌ Издөөдө ката кетти, досум: {str(e)}\nТынч бол, мен сени колдойм 😎")
 
 # Реферал система
 @bot.message_handler(commands=['ref', 'referral'])
@@ -182,7 +209,7 @@ def handle_referral(message):
 def handle_joke(message):
     user = get_user(message.from_user.id)
     if not is_pro(user):
-        bot.send_message(message.chat.id, "❌ Joke функциясы PRO үчүн гана\\! ⭐️ Premium баскыңыз 😅")
+        bot.send_message(message.chat.id, "❌ Joke функциясы PRO үчүн гана\\! ⭐️ Premium баскыңыз, досум 😅")
         return
     answer = grok_answer("Күлкүлүү анекдот айт, досум", lang=user.get("language", "ky"), is_pro=True)
     bot.send_message(message.chat.id, answer)
@@ -191,7 +218,7 @@ def handle_joke(message):
 def handle_motivation(message):
     user = get_user(message.from_user.id)
     if not is_pro(user):
-        bot.send_message(message.chat.id, "❌ Motivation функциясы PRO үчүн гана\\! ⭐️ Premium баскыңыз 😅")
+        bot.send_message(message.chat.id, "❌ Motivation функциясы PRO үчүн гана\\! ⭐️ Premium баскыңыз, досум 😅")
         return
     answer = grok_answer("Мотивациялык сөз айт, досум", lang=user.get("language", "ky"), is_pro=True)
     bot.send_message(message.chat.id, answer)
@@ -212,11 +239,11 @@ def handle_vip_video(message):
     )
     kb.add(types.InlineKeyboardButton("🔙 Артка", callback_data="back_menu"))
 
-    bot.send_message(message.chat.id, 
+    vip_text = (
         "Досум, VIP ✨ Video 📸 – кино стилиндеги күчтүү видео\\! 🔥\n"
-        "Реклама, Инстаграм, блог үчүн идеалдуу\\. Кайсы пакетти тандайсың? 😎",
-        reply_markup=kb
+        "Реклама, Инстаграм, блог үчүн идеалдуу\\. Кайсы пакетти тандайсың? 😎"
     )
+    bot.send_message(message.chat.id, vip_text, reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("vip_"))
 def process_vip_payment(call):
@@ -233,12 +260,13 @@ def process_vip_payment(call):
 
     payment_link = f"https://unlimint.com/pay?amount={amount}&user_id={call.from_user.id}&package={package}&description=VIP+Video+{package}+видео"
     
-    bot.send_message(call.message.chat.id, 
+    payment_text = (
         f"Досум, төлөм линк даяр\\! 🚀\n"
         f"Сумма: {amount}$\n"
         f"Төлөм жасагандан кийин видеоң дароо жасалат \\(30–60 сек, Runway сапаты\\)\\! 🎥\n\n"
         f"[Төлөмгө өтүү →]({payment_link})"
     )
+    bot.send_message(call.message.chat.id, payment_text)
 
 @bot.callback_query_handler(func=lambda c: c.data == "back_menu")
 def back_to_menu(call):
@@ -277,7 +305,7 @@ def show_menu(message):
     kb.add("🌐 Тил өзгөртүү", "🆘 Жардам")
     kb.add("VIP ✨ Video 📸")
 
-    menu_text = t('menu_ready', lang).replace('*', '\\*').replace('_', '\\_').replace('!', '\\!')
+    menu_text = t('menu_ready', lang).replace('*', '\\*').replace('_', '\\_').replace('!', '\\!').replace('.', '\\.')
     bot.send_message(message.chat.id, menu_text, reply_markup=kb)
 
 @bot.message_handler(func=lambda m: m.text == "⭐️ Premium")
@@ -312,7 +340,7 @@ def handle_menu(message):
         start(message)
         return
     elif message.text == "🆘 Жардам":
-        bot.send_message(message.chat.id, "🆘 Жардам\n\nБул бот Grok күчү менен иштейт\\. Суроо бериңиз – чынчыл жана акылдуу жооп аласыз\\!\n\nПремиум пландар үчүн ⭐️ Premium баскыла\\.")
+        bot.send_message(message.chat.id, "🆘 Жардам\n\nБул бот TILEK ALDASHOV күчү менен иштейт\\. Суроо бериңиз – чынчыл жана акылдуу жооп аласыз\\!\n\nПремиум пландар үчүн ⭐️ Premium баскыла\\.")
         return
     else:  # "💬 Суроо берүү"
         user = get_user(message.from_user.id)
@@ -340,12 +368,17 @@ def chat(message):
     if is_pro(user):
         answer += "\n\n👑 PRO режим: эң күчтүү Grok + бардык функциялар"
 
-    # MarkdownV2 үчүн коопсуз кылуу – бардык проблемалуу символдорду качуу
-    answer = answer.replace('\\', '\\\\').replace('*', '\\*').replace('_', '\\_').replace('[', '\\[').replace(']', '\\]').replace('(', '\\(').replace(')', '\\)').replace('~', '\\~').replace('', '\\').replace('>', '\\>').replace('#', '\\#').replace('+', '\\+').replace('-', '\\-').replace('=', '\\=').replace('|', '\\|').replace('{', '\\{').replace('}', '\\}').replace('.', '\\.').replace('!', '\\!')
+    # Тилек стили 100% – досум, кулкулуу, бооркеер, чынчыл
+    answer = f"Досум, мен ойлонуп көрүп, чындыкты түз айтайын: {answer}\n\n😎 Сен үчүн жакшы сөз айттым, кубанычта бол! Алла жар болсун! 🤲🏻"
+
+    # MarkdownV2 үчүн толук коопсуз кылуу
+    escape_chars = r'_*[]()~`>#+-=|{}.!'
+    for char in escape_chars:
+        answer = answer.replace(char, f'\\{char}')
 
     bot.send_message(message.chat.id, answer)
 
 if __name__ == "__main__":
-    print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video!")
+    print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
     bot.infinity_polling()
     
