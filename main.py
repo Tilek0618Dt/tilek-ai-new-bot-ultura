@@ -106,7 +106,7 @@ def handle_video(message):
         }
         response = requests.post("https://api.kling.ai/v1/video/generate", json=payload, headers=headers)
         result = response.json()
-
+        
         if "video_url" in result:
             bot.send_video(message.chat.id, result["video_url"])
             bot.send_message(message.chat.id, "Видео даяр болду, досум\\! 🎥 Күчтүү чыкты окшойт 😎")
@@ -243,6 +243,12 @@ def handle_vip_video(message):
         "Досум, VIP ✨ Video 📸 – кино стилиндеги күчтүү видео\\! 🔥\n"
         "Реклама, Инстаграм, блог үчүн идеалдуу\\. Кайсы пакетти тандайсың? 😎"
     )
+
+    # Коопсуз кылуу – бардык резерв символдорду качуу
+    escape_chars = r'_*[]()~>#+-=|{}.!'
+    for char in escape_chars:
+        vip_text = vip_text.replace(char, f'\\{char}')
+
     bot.send_message(message.chat.id, vip_text, reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("vip_"))
@@ -266,6 +272,12 @@ def process_vip_payment(call):
         f"Төлөм жасагандан кийин видеоң дароо жасалат \\(30–60 сек, Runway сапаты\\)\\! 🎥\n\n"
         f"[Төлөмгө өтүү →]({payment_link})"
     )
+
+    # Коопсуз кылуу
+    escape_chars = r'_*[]()~>#+-=|{}.!'
+    for char in escape_chars:
+        payment_text = payment_text.replace(char, f'\\{char}')
+
     bot.send_message(call.message.chat.id, payment_text)
 
 @bot.callback_query_handler(func=lambda c: c.data == "back_menu")
@@ -305,7 +317,11 @@ def show_menu(message):
     kb.add("🌐 Тил өзгөртүү", "🆘 Жардам")
     kb.add("VIP ✨ Video 📸")
 
-    menu_text = t('menu_ready', lang).replace('*', '\\*').replace('_', '\\_').replace('!', '\\!').replace('.', '\\.')
+    menu_text = t('menu_ready', lang)
+    escape_chars = r'_*[]()~>#+-=|{}.!'
+    for char in escape_chars:
+        menu_text = menu_text.replace(char, f'\\{char}')
+
     bot.send_message(message.chat.id, menu_text, reply_markup=kb)
 
 @bot.message_handler(func=lambda m: m.text == "⭐️ Premium")
@@ -320,7 +336,12 @@ def premium(message):
     user = get_user(message.from_user.id)
     lang = user.get("language", "en") if user else "en"
     text = t('menu_ready', lang) + "\n\n💎 Премиум пландар:\n\n⭐️ PLUS – безлимит + тез жооп + үн менен сүйлөшүү + сүрөт анализ\n👑 PRO – бардык функциялар + видео генерация + супер үн + сүрөт жасоо"
-    text = text.replace('*', '\\*').replace('_', '\\_').replace('!', '\\!').replace('.', '\\.')
+
+    # Коопсуз кылуу – бардык резерв символдорду качуу
+    escape_chars = r'_*[]()~>#+-=|{}.!'
+    for char in escape_chars:
+        text = text.replace(char, f'\\{char}')
+
     bot.send_message(message.chat.id, text, reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data in ["buy_plus", "buy_pro", "back"])
@@ -340,7 +361,7 @@ def handle_menu(message):
         start(message)
         return
     elif message.text == "🆘 Жардам":
-        bot.send_message(message.chat.id, "🆘 Жардам\n\nБул бот TILEK ALDASHOV  күчү менен иштейт\\. Суроо бериңиз – чынчыл жана акылдуу жооп аласыз\\!\n\nПремиум пландар үчүн ⭐️ Premium баскыла\\.")
+        bot.send_message(message.chat.id, "🆘 Жардам\n\nБул бот TILEK ALDASHOV күчү менен иштейт\\. Суроо бериңиз – чынчыл жана акылдуу жооп аласыз\\!\n\nПремиум пландар үчүн ⭐️ Premium баскыла\\.")
         return
     else:  # "💬 Суроо берүү"
         user = get_user(message.from_user.id)
@@ -381,4 +402,3 @@ def chat(message):
 if __name__ == "__main__":
     print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
     bot.infinity_polling()
-    
