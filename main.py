@@ -9,6 +9,7 @@ from gtts import gTTS
 from pydub import AudioSegment
 import requests
 import base64
+import time  # polling коопсуздугу үчүн
 
 try:
     from elevenlabs import ElevenLabs, VoiceSettings
@@ -28,6 +29,9 @@ r = sr.Recognizer()
 
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 KLING_API_KEY = os.getenv("KLING_API_KEY")  # Kling API кодуң (туура жазылды)
+
+# 409 Conflict'ты алдын алуу үчүн polling'ди коопсуз кылабыз
+print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
 
 # Үн менен сүйлөшүү (PLUS/Pro)
 @bot.message_handler(content_types=['voice'])
@@ -82,7 +86,7 @@ def handle_voice(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Үн иштетүүдө ката кетти, досум: {str(e)}\nТекст менен жазып көрчү, мен сени колдойм 😎")
 
-# Видео генерация (PRO үчүн – тексттен видео жасоо)
+# Видео генерация (PRO үчүн)
 @bot.message_handler(func=lambda m: is_pro(get_user(m.from_user.id)) and ("видео" in m.text.lower() or m.text.startswith("/video")))
 def handle_video(message):
     user = get_user(message.from_user.id)
@@ -106,7 +110,7 @@ def handle_video(message):
         }
         response = requests.post("https://api.kling.ai/v1/video/generate", json=payload, headers=headers)
         result = response.json()
-        
+
         if "video_url" in result:
             bot.send_video(message.chat.id, result["video_url"])
             bot.send_message(message.chat.id, "Видео даяр болду, досум\\! 🎥 Күчтүү чыкты окшойт 😎")
@@ -115,7 +119,7 @@ def handle_video(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Видео жасоодо ката кетти, досум: {str(e)}\nТынч бол, мен ойлонуп, кайра аракет кылам 🚀")
 
-# Видео анализ (PRO үчүн – жөнөткөн видеону талдоо)
+# Видео анализ (PRO үчүн)
 @bot.message_handler(content_types=['video'])
 def handle_video_analysis(message):
     user = get_user(message.from_user.id)
@@ -131,7 +135,6 @@ def handle_video_analysis(message):
         with open('video.mp4', 'wb') as f:
             f.write(downloaded_file)
 
-        # Видеону талдоо – Grok'ко текст менен сүрөттөтүү
         prompt = "Бул видео эмне жөнүндө? Толук сүрөттөп бер, досум, кулкулуу комментарий кош, маанилүү учурларды айт!"
         answer = grok_answer(prompt, lang=user.get("language", "ky"), is_pro=True)
 
@@ -223,8 +226,8 @@ def handle_motivation(message):
     answer = grok_answer("Мотивациялык сөз айт, досум", lang=user.get("language", "ky"), is_pro=True)
     bot.send_message(message.chat.id, answer)
 
-# VIP ✨ Video 📸 – өзүнчө платный функция
-@bot.message_handler(func=lambda m: m.text == "VIP ✨ Video 📸" or m.text.startswith("/vipvideo"))
+# VIP ✨ Video 📸 – өзүнчө платный функция (эмодзи маселесин чечүү үчүн "VIP" жана "Video" менен текшерүү)
+@bot.message_handler(func=lambda m: "VIP" in m.text and "Video" in m.text)
 def handle_vip_video(message):
     user = get_user(message.from_user.id)
     if not user:
@@ -244,7 +247,6 @@ def handle_vip_video(message):
         "Реклама, Инстаграм, блог үчүн идеалдуу\\. Кайсы пакетти тандайсың? 😎"
     )
 
-    # Коопсуз кылуу – бардык резерв символдорду качуу
     escape_chars = r'_*[]()~>#+-=|{}.!'
     for char in escape_chars:
         vip_text = vip_text.replace(char, f'\\{char}')
@@ -273,7 +275,6 @@ def process_vip_payment(call):
         f"[Төлөмгө өтүү →]({payment_link})"
     )
 
-    # Коопсуз кылуу
     escape_chars = r'_*[]()~>#+-=|{}.!'
     for char in escape_chars:
         payment_text = payment_text.replace(char, f'\\{char}')
@@ -337,7 +338,6 @@ def premium(message):
     lang = user.get("language", "en") if user else "en"
     text = t('menu_ready', lang) + "\n\n💎 Премиум пландар:\n\n⭐️ PLUS – безлимит + тез жооп + үн менен сүйлөшүү + сүрөт анализ\n👑 PRO – бардык функциялар + видео генерация + супер үн + сүрөт жасоо"
 
-    # Коопсуз кылуу – бардык резерв символдорду качуу
     escape_chars = r'_*[]()~>#+-=|{}.!'
     for char in escape_chars:
         text = text.replace(char, f'\\{char}')
@@ -357,10 +357,11 @@ def buy(call):
 
 @bot.message_handler(func=lambda message: message.text in ["💬 Суроо берүү", "🌐 Тил өзгөртүү", "🆘 Жардам"])
 def handle_menu(message):
-    if message.text == "🌐 Тил өзгөртүү":
+    text = message.text
+    if "Тил өзгөртүү" in text:
         start(message)
         return
-    elif message.text == "🆘 Жардам":
+    elif "Жардам" in text:
         bot.send_message(message.chat.id, "🆘 Жардам\n\nБул бот TILEK ALDASHOV күчү менен иштейт\\. Суроо бериңиз – чынчыл жана акылдуу жооп аласыз\\!\n\nПремиум пландар үчүн ⭐️ Premium баскыла\\.")
         return
     else:  # "💬 Суроо берүү"
@@ -389,10 +390,10 @@ def chat(message):
     if is_pro(user):
         answer += "\n\n👑 PRO режим: эң күчтүү Grok + бардык функциялар"
 
-    # Тилек стили 100% – досум, кулкулуу, бооркеер, чынчыл
+    # Тилек стили 100%
     answer = f"Досум, мен ойлонуп көрүп, чындыкты түз айтайын: {answer}\n\n😎 Сен үчүн жакшы сөз айттым, кубанычта бол! Алла жар болсун! 🤲🏻"
 
-    # MarkdownV2 үчүн толук коопсуз кылуу
+    # MarkdownV2 коопсуздугу
     escape_chars = r'_*[]()~`>#+-=|{}.!'
     for char in escape_chars:
         answer = answer.replace(char, f'\\{char}')
@@ -400,5 +401,7 @@ def chat(message):
     bot.send_message(message.chat.id, answer)
 
 if __name__ == "__main__":
-    print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
+    # 409 Conflict'ты алдын алуу үчүн кичине кечигүү
+    time.sleep(2)
+    print("🔥 Tilek AI ишке кирди – TILEK ALDASHOV күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
     bot.infinity_polling()
