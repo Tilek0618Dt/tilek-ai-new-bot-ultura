@@ -9,7 +9,7 @@ from gtts import gTTS
 from pydub import AudioSegment
 import requests
 import base64
-import time  # polling коопсуздугу үчүн
+import time  # 409 Conflict'ты алдын алуу үчүн
 
 try:
     from elevenlabs import ElevenLabs, VoiceSettings
@@ -28,9 +28,8 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode="MarkdownV2")
 r = sr.Recognizer()
 
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-KLING_API_KEY = os.getenv("KLING_API_KEY")  # Kling API кодуң (туура жазылды)
+KLING_API_KEY = os.getenv("KLING_API_KEY")
 
-# 409 Conflict'ты алдын алуу үчүн polling'ди коопсуз кылабыз
 print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
 
 # Үн менен сүйлөшүү (PLUS/Pro)
@@ -192,7 +191,7 @@ def handle_image_gen(message):
 def handle_search(message):
     user = get_user(message.from_user.id)
     query = message.text.strip()
-    bot.send_message(message.chat.id, "Издеп жатам, досум... 5-10 секунд күтүңүз 🚀")
+    bot.send_message(message.chat.id, "Издеп жатам, досум... 5-10 секунд күтүңүз 🚀")  
 
     try:
         answer = grok_answer(f"Интернеттен издөө: {query}", lang=user.get("language", "ky"), is_pro=True)
@@ -355,7 +354,7 @@ def buy(call):
     bot.answer_callback_query(call.id, f"{plan.upper()} активдешти\\! 🎉")
     show_menu(call.message)
 
-@bot.message_handler(func=lambda message: message.text in ["💬 Суроо берүү", "🌐 Тил өзгөртүү", "🆘 Жардам"])
+@bot.message_handler(func=lambda message: "Суроо берүү" in message.text or "Тил өзгөртүү" in message.text or "Жардам" in message.text)
 def handle_menu(message):
     text = message.text
     if "Тил өзгөртүү" in text:
@@ -401,7 +400,6 @@ def chat(message):
     bot.send_message(message.chat.id, answer)
 
 if __name__ == "__main__":
-    # 409 Conflict'ты алдын алуу үчүн кичине кечигүү
-    time.sleep(2)
+    time.sleep(3)  # Render'дин кэш/эски процесс үчүн кечигүү
     print("🔥 Tilek AI ишке кирди – TILEK ALDASHOV күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
     bot.infinity_polling()
