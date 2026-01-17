@@ -9,7 +9,7 @@ from gtts import gTTS
 from pydub import AudioSegment
 import requests
 import base64
-import time  # 409 Conflict'ты алдын алуу үчүн
+import time
 
 try:
     from elevenlabs import ElevenLabs, VoiceSettings
@@ -191,7 +191,7 @@ def handle_image_gen(message):
 def handle_search(message):
     user = get_user(message.from_user.id)
     query = message.text.strip()
-    bot.send_message(message.chat.id, "Издеп жатам, досум... 5-10 секунд күтүңүз 🚀")  
+    bot.send_message(message.chat.id, "Издеп жатам, досум... 5-10 секунд күтүңүз 🚀")
 
     try:
         answer = grok_answer(f"Интернеттен издөө: {query}", lang=user.get("language", "ky"), is_pro=True)
@@ -225,7 +225,7 @@ def handle_motivation(message):
     answer = grok_answer("Мотивациялык сөз айт, досум", lang=user.get("language", "ky"), is_pro=True)
     bot.send_message(message.chat.id, answer)
 
-# VIP ✨ Video 📸 – өзүнчө платный функция (эмодзи маселесин чечүү үчүн "VIP" жана "Video" менен текшерүү)
+# VIP ✨ Video 📸 – өзүнчө платный функция
 @bot.message_handler(func=lambda m: "VIP" in m.text and "Video" in m.text)
 def handle_vip_video(message):
     user = get_user(message.from_user.id)
@@ -236,8 +236,8 @@ def handle_vip_video(message):
     kb = types.InlineKeyboardMarkup(row_width=1)
     kb.add(
         types.InlineKeyboardButton("1 видео \\(30–60 сек\\) – 14\\.99$", callback_data="vip_1"),
-        types.InlineKeyboardButton("3 видео пакети – 35$ \\(скидка\\!\\)", callback_data="vip_3"),
-        types.InlineKeyboardButton("5 видео пакети – 55$ \\(чоң скидка\\!\\)", callback_data="vip_5")
+        types.InlineKeyboardButton("3 видео пакети – 35$ \\(скидка\\)", callback_data="vip_3"),
+        types.InlineKeyboardButton("5 видео пакети – 55$ \\(чоң скидка\\)", callback_data="vip_5")
     )
     kb.add(types.InlineKeyboardButton("🔙 Артка", callback_data="back_menu"))
 
@@ -250,7 +250,10 @@ def handle_vip_video(message):
     for char in escape_chars:
         vip_text = vip_text.replace(char, f'\\{char}')
 
-    bot.send_message(message.chat.id, vip_text, reply_markup=kb)
+    try:
+        bot.send_message(message.chat.id, vip_text, reply_markup=kb)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ VIP меню ачууда ката кетти, досум: {str(e)}\nМен оңдоп жатам, тынч бол 😅")
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("vip_"))
 def process_vip_payment(call):
@@ -354,16 +357,16 @@ def buy(call):
     bot.answer_callback_query(call.id, f"{plan.upper()} активдешти\\! 🎉")
     show_menu(call.message)
 
-@bot.message_handler(func=lambda message: "Суроо берүү" in message.text or "Тил өзгөртүү" in message.text or "Жардам" in message.text)
+@bot.message_handler(func=lambda message: "Суроо" in message.text or "Тил" in message.text or "Жардам" in message.text)
 def handle_menu(message):
     text = message.text
-    if "Тил өзгөртүү" in text:
+    if "Тил" in text:
         start(message)
         return
     elif "Жардам" in text:
         bot.send_message(message.chat.id, "🆘 Жардам\n\nБул бот TILEK ALDASHOV күчү менен иштейт\\. Суроо бериңиз – чынчыл жана акылдуу жооп аласыз\\!\n\nПремиум пландар үчүн ⭐️ Premium баскыла\\.")
         return
-    else:  # "💬 Суроо берүү"
+    else:
         user = get_user(message.from_user.id)
         lang = user.get("language", "en") if user else "en"
         bot.send_message(message.chat.id, t('ask_question', lang))
@@ -387,12 +390,10 @@ def chat(message):
     if is_plus(user):
         answer += "\n\n⚡️ PLUS режим: тез жана безлимит"
     if is_pro(user):
-        answer += "\n\n👑 PRO режим: эң күчтүү Grok + бардык функциялар"
+        answer += "\n\n👑 PRO режим: эң күчтүү TILEK AI + бардык функциялар"
 
-    # Тилек стили 100%
     answer = f"Досум, мен ойлонуп көрүп, чындыкты түз айтайын: {answer}\n\n😎 Сен үчүн жакшы сөз айттым, кубанычта бол! Алла жар болсун! 🤲🏻"
 
-    # MarkdownV2 коопсуздугу
     escape_chars = r'_*[]()~`>#+-=|{}.!'
     for char in escape_chars:
         answer = answer.replace(char, f'\\{char}')
@@ -400,6 +401,6 @@ def chat(message):
     bot.send_message(message.chat.id, answer)
 
 if __name__ == "__main__":
-    time.sleep(3)  # Render'дин кэш/эски процесс үчүн кечигүү
+    time.sleep(3)  # Render кэш/эски процесс үчүн кечигүү
     print("🔥 Tilek AI ишке кирди – TILEK ALDASHOV күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
     bot.infinity_polling()
