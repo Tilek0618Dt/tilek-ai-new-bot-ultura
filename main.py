@@ -1,4 +1,4 @@
-# main.py – АКЫРКЫ версия: Grok + ҮН + ВИДЕО + СҮРӨТ + ВИДЕО АНАЛИЗ + РЕФЕРАЛ + ИЗДӨӨ + JOKE/MOTIVATION + VIP ✨ Video 📸
+# main.py – АКЫРКЫ версия: Grok + ҮН + ВИДЕО + СҮРӨТ + ВИДЕО АНАЛИЗ + РЕФЕРАЛ МЕНЮ + VIP ✨ Video 📸
 # Тилек стили 100% – досум, кулкулуу, бооркеер, чынчыл, кээде серёзный кеңеш
 
 import telebot
@@ -33,7 +33,6 @@ KLING_API_KEY = os.getenv("KLING_API_KEY")
 print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
 
 def escape_markdown(text):
-    """MarkdownV2 үчүн бардык резерв символдорду качуу"""
     escape_chars = r'_*[]()~`>#+-=|{}.!'
     for char in escape_chars:
         text = text.replace(char, f'\\{char}')
@@ -206,12 +205,42 @@ def handle_search(message):
     except Exception as e:
         bot.send_message(message.chat.id, escape_markdown(f"❌ Издөөдө ката кетти, досум: {str(e)}\nТынч бол, мен сени колдойм 😎"))
 
-# Реферал система
-@bot.message_handler(commands=['ref', 'referral'])
+# Реферал менюсу – 🫂 Реферал баскычы гана иштейт
+@bot.message_handler(func=lambda m: "Реферал" in m.text or "🫂" in m.text)
 def handle_referral(message):
-    user = get_user(message.from_user.id)
-    code = get_referral_code(message.from_user.id)
-    bot.send_message(message.chat.id, escape_markdown(f"Досум, чындыкты түз айтайын – сенин реферал кодуң: {code}\n5 дос чакырсаң 1 жума бекер PLUS ачылат! 😎 Досторуңа жөнөт!"))
+    user_id = message.from_user.id
+    user = get_user(user_id)
+    if not user:
+        bot.send_message(message.chat.id, escape_markdown("Салам, досум! /start менен баштаңыз 😅"))
+        return
+
+    code = get_referral_code(user_id)
+    referral_count = user.get("referral_count", 0)
+
+    bonus_msg = ""
+    if referral_count >= 5 and not user.get("plus_bonus_activated", False):
+        set_plan(user_id, "plus")
+        user["plus_bonus_activated"] = True
+        user["plus_bonus_until"] = int(time.time()) + 7 * 24 * 3600
+        save_user(user_id, user.get("country"), user.get("language"))
+        bonus_msg = escape_markdown("\n\n✅ 5 дос чакырылды! 🎉 1 жума бекер PLUS ачылды! 🚀")
+
+    text = escape_markdown(
+        f"Досум, чындыкты түз айтайын – досторуңду чакыр! 😎\n\n"
+        f"Tilek AI ботко киргиз: https://t.me/tilek_ai_bot\n"
+        f"Tilek AI каналына каттал: https://t.me/Tilek_Ai\n\n"
+        f"4-5-6 дос чакырсаң + 2 каналга катталсаң – 1 жума бекер PLUS ачылат! 🚀\n"
+        f"(PRO эч качан бекер болбойт, банкрот болуп калбайлы 😅)\n\n"
+        f"Азыр реферал саның: {referral_count}/5\n"
+        f"{bonus_msg}"
+    )
+
+    bot.send_message(message.chat.id, text)
+
+# /ref командасын толук өчүрүү
+@bot.message_handler(commands=['ref', 'referral'])
+def ignore_ref(message):
+    pass  # эч нерсе жооп бербейт
 
 # Кошумча кулкулуу функциялар (PRO үчүн)
 @bot.message_handler(commands=['joke'])
@@ -232,7 +261,7 @@ def handle_motivation(message):
     answer = grok_answer("Мотивациялык сөз айт, досум", lang=user.get("language", "ky"), is_pro=True)
     bot.send_message(message.chat.id, escape_markdown(answer))
 
-# VIP ✨ Video 📸 – өзүнчө платный функция
+# VIP ✨ Video 📸
 @bot.message_handler(func=lambda m: "VIP" in m.text and "Video" in m.text)
 def handle_vip_video(message):
     user = get_user(message.from_user.id)
@@ -312,10 +341,9 @@ def show_menu(message):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     kb.add("💬 Суроо берүү", "⭐️ Premium")
     kb.add("🌐 Тил өзгөртүү", "🆘 Жардам")
-    kb.add("VIP ✨ Video 📸")
+    kb.add("VIP ✨ Video 📸", "🫂 Реферал")
 
     menu_text = escape_markdown(t('menu_ready', lang))
-
     bot.send_message(message.chat.id, menu_text, reply_markup=kb)
 
 @bot.message_handler(func=lambda m: m.text == "⭐️ Premium")
@@ -386,9 +414,10 @@ def chat(message):
     bot.send_message(message.chat.id, answer)
 
 if __name__ == "__main__":
-    time.sleep(5)  # Render үчүн кечигүү
+    time.sleep(5)
     print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
     bot.infinity_polling()
+
 
     
 
