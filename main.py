@@ -1,6 +1,3 @@
-# main.py – АКЫРКЫ версия: Grok + ҮН + ВИДЕО + СҮРӨТ + ВИДЕО АНАЛИЗ + РЕФЕРАЛ МЕНЮ + VIP ✨ Video 📸
-# Тилек стили 100% – досум, кулкулуу, бооркеер, чынчыл, кээде серёзный кеңеш
-
 import telebot
 from telebot import types
 import os
@@ -293,44 +290,7 @@ def back_to_menu(call):
     bot.answer_callback_query(call.id)
     show_menu(call.message)
 
-# Башка handler'лер
-@bot.message_handler(commands=['start'])
-def start(message):
-    user = get_user(message.from_user.id)
-    if user and user.get("language"):
-        show_menu(message)
-        return
-
-   markup = types.InlineKeyboardMarkup(row_width=2)
-    for code, c in COUNTRIES.items():
-        markup.add(types.InlineKeyboardButton(f"{c['flag']} {c['name']}", callback_data=f"country_{code}"))
-
-    bot.send_message(message.chat.id, t("choose_country", "ky"), reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("country_"))
-def save_country(call):
-    code = call.data.split("_")[1]
-    c = COUNTRIES.get(code)
-    if c:
-        lang = c["lang"]
-        save_user(call.from_user.id, code, lang)
-        bot.answer_callback_query(call.id, escape_markdown(f"✅ {c['name']} тандалды! Тил: {lang.upper()}"))
-        show_menu(call.message)
-    else:
-        bot.send_message(call.message.chat.id, escape_markdown(t("error_country", call.from_user.language or "ky")))
-
-def show_menu(message):
-    user = get_user(message.from_user.id)
-    lang = user.get("language", "ky") if user else "ky"
-
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    kb.add(t("ask_question", lang), t("premium_title", lang))
-    kb.add("🌐 Тил өзгөртүү", "🆘 Жардам")
-    kb.add("VIP ✨ Video 📸", "🫂 Реферал")
-
-    menu_text = t("menu_ready", lang)
-    bot.send_message(message.chat.id, escape_markdown(menu_text), reply_markup=kb)
-
+# Premium меню
 @bot.message_handler(func=lambda m: m.text == t("premium_title", "ky") or m.text == t("premium_title", "ru") or m.text == t("premium_title", "en"))
 def premium(message):
     user = get_user(message.from_user.id)
@@ -358,6 +318,7 @@ def buy(call):
     bot.answer_callback_query(call.id, escape_markdown(f"{plan.upper()} активдешти! 🎉"))
     show_menu(call.message)
 
+# Тил өзгөртүү жана жардам
 @bot.message_handler(func=lambda message: "Суроо" in message.text or "Тил" in message.text or "Жардам" in message.text or "🌐" in message.text or "SOS" in message.text)
 def handle_menu(message):
     text = message.text.lower()
@@ -372,6 +333,7 @@ def handle_menu(message):
     else:
         bot.send_message(message.chat.id, t("ask_question", lang))
 
+# Кадимки текст чат
 @bot.message_handler(content_types=["text"])
 def chat(message):
     user = get_user(message.from_user.id)
@@ -401,7 +363,7 @@ def chat(message):
 if __name__ == "__main__":
     time.sleep(5)
     print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
-    bot.infinity_polling() 
+    bot.infinity_polling()
     
 
     
