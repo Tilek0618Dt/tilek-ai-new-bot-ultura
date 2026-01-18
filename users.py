@@ -1,64 +1,86 @@
-# users.py – толук версия: план + реферал саны + бонус (5 дос = 1 жума бекер PLUS)
+# users.py – толук версия: план + реферал саны + 5 дос = 1 жума бекер PLUS
 
-_users = {}
+import json
+import time
+import os
+
+USERS_FILE = "users.json"
+
+def load_users():
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_users(users):
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f, indent=4)
+
+users = load_users()
 
 def get_user(user_id):
-    # Эгер колдонуучу жок болсо – демо маалымат кайтарат (default free)
-    return _users.get(user_id, {
+    user_id_str = str(user_id)
+    return users.get(user_id_str, {
         "country": None,
-        "language": "ky",  # демо тил – кыргызча
+        "language": "ky",
         "plan": "free",
         "referral_count": 0,
         "referral_code": None,
-        "bonus_until": None  # 1 жума бонус үчүн убакыт (datetime)
+        "plus_bonus_activated": False,
+        "plus_bonus_until": 0
     })
 
-def save_user(user_id, country, language, plan="free"):
-    referral_code = f"TILEK{user_id % 10000:04d}"  # уникалдуу код
-    _users[user_id] = {
-        "country": country,
-        "language": language,
-        "plan": plan,
-        "referral_count": 0,
-        "referral_code": referral_code,
-        "bonus_until": None
-    }
+def save_user(user_id, country, language):
+    user_id_str = str(user_id)
+    if user_id_str not in users:
+        users[user_id_str] = {
+            "country": country,
+            "language": language,
+            "plan": "free",
+            "referral_count": 0,
+            "referral_code": f"TILEK{user_id % 1000000:06d}",
+            "plus_bonus_activated": False,
+            "plus_bonus_until": 0
+        }
+    else:
+        users[user_id_str]["country"] = country
+        users[user_id_str]["language"] = language
+    save_users(users)
 
 def set_plan(user_id, plan):
-    if user_id in _users:
-        _users[user_id]["plan"] = plan
-        # Бонус убактысын тазала (жаңы план болсо)
-        _users[user_id]["bonus_until"] = None
+    user_id_str = str(user_id)
+    if user_id_str in users:
+        users[user_id_str]["plan"] = plan
+        save_users(users)
 
 def add_referral(user_id):
-    if user_id in _users:
-        _users[user_id]["referral_count"] += 1
-        count = _users[user_id]["referral_count"]
-        
-        if count >= 5:
-            from datetime import datetime, timedelta
-            
-            # 1 жума бекер PLUS (эгер free же plus болсо – PLUS'ка көтөр)
-            current_plan = _users[user_id]["plan"]
-            if current_plan in ["free", "plus"]:
-                _users[user_id]["plan"] = "plus"
-                # Бонус убактысын кошуу (1 жума)
-                _users[user_id]["bonus_until"] = datetime.now() + timedelta(days=7)
-                return True  # бонус берилди
-            return False  # бонус берилген жок (мисалы PRO бар болсо)
+    user_id_str = str(user_id)
+    if user_id_str in users:
+        users[user_id_str]["referral_count"] = users[user_id_str].get("referral_count", 0) + 1
+        count = users[user_id_str]["referral_count"]
+        if count >= 5 and not users[user_id_str].get("plus_bonus_activated", False):
+            users[user_id_str]["plan"] = "plus"
+            users[user_id_str]["plus_bonus_activated"] = True
+            users[user_id_str]["plus_bonus_until"] = int(time.time()) + 7 * 24 * 3600
+            save_users(users)
+            return True  # бонус берилди
+        save_users(users)
+        return False
     return False
 
 def get_referral_code(user_id):
     user = get_user(user_id)
-    return user.get("referral_code", f"TILEK{user_id % 10000:04d}")
+    return user.get("referral_code", f"TILEK{user_id % 1000000:06d}")
 
 def check_bonus(user_id):
     user = get_user(user_id)
-    if user.get("bonus_until"):
-        from datetime import datetime
-        if datetime.now() > user["bonus_until"]:
-            # Бонус бүттү – free'ге кайтар
-            _users[user_id]["plan"] = "free"
-            _users[user_id]["bonus_until"] = None
-            return "Бонус убактысы бүттү, досум. Кайра чакырсаң – кайра аласың! 😎"
+    if user.get("plus_bonus_activated", False):
+        until = user.get("plus_bonus_until", 0)
+        if time.time() > until:
+            user["plan"] = "free"
+            user["plus_bonus_activated"] = False
+            save_users(users)
+            return None  # кабар бербейбиз
+        else:
+            return f"✅ 1 жума бекер PLUS активдүү!"
     return None
