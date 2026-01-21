@@ -201,7 +201,7 @@ def handle_video_analysis(message):
 
         os.remove("video.mp4")
 
-        except Exception as e:
+    except Exception as e:
         bot.send_message(message.chat.id, escape_markdown(f"{t('video_analysis_error', user.get('language', 'ky'))}: {str(e)}"))
 
 # Сүрөт тануу + анализ (PLUS/Pro)
@@ -393,6 +393,7 @@ def chat(message):
     if not user or not user.get("language"):
         start(message)
         return
+
     lang = user["language"]
     bonus_msg = check_bonus(message.from_user.id)
     if bonus_msg:
