@@ -14,7 +14,7 @@ def load_users():
 
 def save_users(users):
     with open(USERS_FILE, "w") as f:
-        json.dump(users, f, indent=4)
+        json.dump(users, f, indent=4, ensure_ascii=False)
 
 users = load_users()
 
@@ -30,12 +30,12 @@ def get_user(user_id):
         "plus_bonus_until": 0
     })
 
-def save_user(user_id, country, language):
+def save_user(user_id, country=None, language=None):
     user_id_str = str(user_id)
     if user_id_str not in users:
         users[user_id_str] = {
             "country": country,
-            "language": language,
+            "language": language or "ky",
             "plan": "free",
             "referral_count": 0,
             "referral_code": f"TILEK{user_id % 1000000:06d}",
@@ -43,8 +43,10 @@ def save_user(user_id, country, language):
             "plus_bonus_until": 0
         }
     else:
-        users[user_id_str]["country"] = country
-        users[user_id_str]["language"] = language
+        if country is not None:
+            users[user_id_str]["country"] = country
+        if language is not None:
+            users[user_id_str]["language"] = language
     save_users(users)
 
 def set_plan(user_id, plan):
@@ -53,15 +55,15 @@ def set_plan(user_id, plan):
         users[user_id_str]["plan"] = plan
         save_users(users)
 
-def add_referral(user_id):
-    user_id_str = str(user_id)
-    if user_id_str in users:
-        users[user_id_str]["referral_count"] = users[user_id_str].get("referral_count", 0) + 1
-        count = users[user_id_str]["referral_count"]
-        if count >= 5 and not users[user_id_str].get("plus_bonus_activated", False):
-            users[user_id_str]["plan"] = "plus"
-            users[user_id_str]["plus_bonus_activated"] = True
-            users[user_id_str]["plus_bonus_until"] = int(time.time()) + 7 * 24 * 3600
+def add_referral(referrer_id):
+    referrer_str = str(referrer_id)
+    if referrer_str in users:
+        users[referrer_str]["referral_count"] = users[referrer_str].get("referral_count", 0) + 1
+        count = users[referrer_str]["referral_count"]
+        if count >= 5 and not users[referrer_str].get("plus_bonus_activated", False):
+            users[referrer_str]["plan"] = "plus"
+            users[referrer_str]["plus_bonus_activated"] = True
+            users[referrer_str]["plus_bonus_until"] = int(time.time()) + 7 * 24 * 3600  # 1 жума
             save_users(users)
             return True  # бонус берилди
         save_users(users)
@@ -70,7 +72,11 @@ def add_referral(user_id):
 
 def get_referral_code(user_id):
     user = get_user(user_id)
-    return user.get("referral_code", f"TILEK{user_id % 1000000:06d}")
+    if user.get("referral_code") is None:
+        code = f"TILEK{user_id % 1000000:06d}"
+        user["referral_code"] = code
+        save_user(user_id)
+    return user["referral_code"]
 
 def check_bonus(user_id):
     user = get_user(user_id)
@@ -79,8 +85,8 @@ def check_bonus(user_id):
         if time.time() > until:
             user["plan"] = "free"
             user["plus_bonus_activated"] = False
-            save_users(users)
-            return None  # кабар бербейбиз
+            save_user(user_id)
+            return None
         else:
-            return f"✅ 1 жума бекер PLUS активдүү!"
+            return f"✅ 1 жума бекер PLUS активдүү! 🚀"
     return None
