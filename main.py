@@ -38,26 +38,94 @@ def escape_markdown(text):
         text = text.replace(char, f'\\{char}')
     return text
 
-# Биринчи /start – каналга милдеттүү катталуу сунушу + тил тандоо
+# Free лимит – 20 суроо/күн, 4 саат күтүү менен жаңылануу
+FREE_DAILY_LIMIT = 20
+FREE_RESET_HOURS = 4
+
+def get_free_query_count(user):
+    if user["plan"] != "free":
+        return 0  # PLUS/Pro/VIP үчүн лимит жок
+    last_reset = user.get("free_last_reset", 0)
+    now = int(time.time())
+    if now - last_reset > FREE_RESET_HOURS * 3600:
+        user["free_query_count"] = 0
+        user["free_last_reset"] = now
+        save_user(user_id, user.get("country"), user.get("language"))  # user_id глобал эмес, функция ичинде аныктоо керек
+    return user.get("free_query_count", 0)
+
+def increment_free_query(user_id):
+    user = get_user(user_id)
+    if user["plan"] == "free":
+        count = user.get("free_query_count", 0) + 1
+        user["free_query_count"] = count
+        save_user(user_id, user.get("country"), user.get("language"))
+        return count
+    return 0
+
+# Free лимит текшерүү + реклама
+def check_free_limit(user_id, message):
+    user = get_user(user_id)
+    if user["plan"] != "free":
+        return True
+
+    count = get_free_query_count(user)
+    if count >= FREE_DAILY_LIMIT:
+        reset_time = user.get("free_last_reset", 0) + FREE_RESET_HOURS * 3600
+        remaining = int((reset_time - time.time()) / 3600) if time.time() < reset_time else 0
+        bot.send_message(message.chat.id, escape_markdown(
+            f"Досум, Free лимит түгөндү (20 суроо/күн)! 😅\n\n"
+            f"4 саат күтсөң – кайра 20 суроо ачылат (же калган {remaining} саат).\n\n"
+            "⭐️ Premium сатып алсаң – безлимит + күчтүү функциялар! 8$/ай\n"
+            "👑 PRO – бардык күч! 18$/ай\n\n"
+            "https://ecommpay.com/pay?amount=8&description=PLUS+Tilek+AI\n"
+            "https://ecommpay.com/pay?amount=18&description=PRO+Tilek+AI"
+        ))
+        return False
+    return True
+
+# Биринчи /start – каналга милдеттүү катталуу сунушу + тил тандоо + реферал иштетүү
 @bot.message_handler(commands=['start'])
 def start(message):
-    user = get_user(message.from_user.id)
+    user_id = message.from_user.id
+    args = message.text.split()
+    referrer_code = args[1] if len(args) > 1 else None
 
-    # Биринчи жолу киргенде – каналга милдеттүү катталуу сунушу
+    user = get_user(user_id)
+
+    # Реферал код менен келгенби? – санды +1 кош
+    if referrer_code and referrer_code.startswith("TILEK"):
+        referrer_id = None
+        for uid, u in users.items():
+            if u.get("referral_code") == referrer_code:
+                referrer_id = int(uid)
+                break
+
+        if referrer_id and referrer_id != user_id:
+            added = add_referral(referrer_id)
+            if added:
+                bot.send_message(user_id, escape_markdown("✅ Досум чакырганың үчүн рахмат! Реферал саны жаңыланды! 🎉"))
+            else:
+                bot.send_message(user_id, escape_markdown("Реферал кошулду, бирок бонус али жок 😅"))
+
+    if user and user.get("language"):
+        show_menu(message)
+        return
+
+# Биринчи жолу – канал сунушу + өлкө тандоо
     channel_text = escape_markdown(
         "🤖 Салам, досум! Мен Tilek AI – сенин күчтүү досуңмун 😎❤️\n\n"
         "Ботту толук колдонуу үчүн менин каналыма милдеттүү катталышың керек!\n"
         "Катталсаң – жаңылыктар, бонустар, күчтүү видео жана сюрприздер алдыңкы болуп келет! 🚀\n\n"
-        "t.me/Tilek_Ai  ← Каттал дагы кайра /start бас! ❤️"
+        "t.me/Tilek_Ai  ← Каттал дагы кайра /start бас! ❤️\n\n"
+        "Эми өлкөңүздү тандаңыз – бот ошол тилге өтөт!"
     )
     bot.send_message(message.chat.id, channel_text)
 
-    # Өлкө тандоо – ар дайым чыгат (тил өзгөртүү үчүн да)
     markup = types.InlineKeyboardMarkup(row_width=2)
     for code, c in COUNTRIES.items():
         markup.add(types.InlineKeyboardButton(f"{c['flag']} {c['name']}", callback_data=f"country_{code}"))
 
-    bot.send_message(message.chat.id, t("choose_country", "ky"), reply_markup=markup)
+    bot.send_message(message.chat.id, escape_markdown("🌍 Өлкөңүздү тандаңыз:"), reply_markup=markup)
 
 # Тил тандоо (өлкө тандаганда)
 @bot.callback_query_handler(func=lambda c: c.data.startswith("country_"))
@@ -280,15 +348,14 @@ def handle_referral(message):
         user["plus_bonus_activated"] = True
         user["plus_bonus_until"] = int(time.time()) + 7 * 24 * 3600
         save_user(user_id, user.get("country"), lang)
-        bonus_msg = escape_markdown(f"\n\n✅ {t('referral_bonus_activated', lang)}! 🎉 {t('plus_free_week', lang)} 🚀")
+        bonus_msg = escape_markdown(f"\n\n✅ 5 дос чакырдың, досум! 🎉 1 жума бекер PLUS ачылды! Сен легендасың ❤️🚀")
 
     text = escape_markdown(
-        f"{t('referral_title', lang)}\n\n"
-        f"{t('referral_bot_link', lang)}: https://t.me/tilek_ai_bot\n"
-        f"{t('referral_channel_link', lang)}: https://t.me/Tilek_Ai\n\n"
-        f"{t('referral_condition', lang)}\n"
-        f"{t('referral_no_pro_free', lang)}\n\n"
-        f"{t('current_referrals', lang)}: {referral_count}/5\n"
+        f"🫂 Досум, досторуңду чакыр! 😎\n\n"
+        f"Ботко: https://t.me/tilek_ai_bot?start={code}\n"
+        f"Каналга: https://t.me/Tilek_Ai\n\n"
+        f"5 дос чакырсаң + каналга катталсаң – 1 жума бекер PLUS ачылат! 🔥\n"
+        f"Азыр реферал саның: {referral_count}/5\n"
         f"{bonus_msg}"
     )
 
@@ -387,15 +454,21 @@ def premium(message):
 
     bot.send_message(message.chat.id, text, reply_markup=kb)
 
+# Суроо берүү – Free лимит + реклама
 @bot.message_handler(content_types=["text"])
 def chat(message):
-    user = get_user(message.from_user.id)
+    user_id = message.from_user.id
+    user = get_user(user_id)
     if not user or not user.get("language"):
         start(message)
         return
 
+    # Free лимит текшер
+    if not check_free_limit(user_id, message):
+        return
+
     lang = user["language"]
-    bonus_msg = check_bonus(message.from_user.id)
+    bonus_msg = check_bonus(user_id)
     if bonus_msg:
         bot.send_message(message.chat.id, escape_markdown(bonus_msg))
 
@@ -413,10 +486,18 @@ def chat(message):
     answer = escape_markdown(answer)
     bot.send_message(message.chat.id, answer)
 
+    # Free лимитти +1 кошу
+    increment_free_query(user_id)
+
 if __name__ == "__main__":
     time.sleep(5)
     print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
     bot.infinity_polling()
+
+    
+
+
+
 
 
 
