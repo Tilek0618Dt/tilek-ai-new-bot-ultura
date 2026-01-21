@@ -17,7 +17,7 @@ except ImportError:
     ElevenLabs = None
 
 from config import BOT_TOKEN
-from users import get_user, save_user, set_plan, add_referral, get_referral_code, check_bonus
+from users import get_user, save_user, set_plan, add_referral, get_referral_code, check_bonus, users  # users сөздүгүн импорттодук!
 from countries import COUNTRIES
 from languages import t
 from grok_ai import grok_answer
@@ -42,15 +42,17 @@ def escape_markdown(text):
 FREE_DAILY_LIMIT = 20
 FREE_RESET_HOURS = 4
 
-def get_free_query_count(user):
+def get_free_query_count(user_id):
+    user = get_user(user_id)
     if user["plan"] != "free":
-        return 0  # PLUS/Pro/VIP үчүн лимит жок
+        return 0
+
     last_reset = user.get("free_last_reset", 0)
     now = int(time.time())
     if now - last_reset > FREE_RESET_HOURS * 3600:
         user["free_query_count"] = 0
         user["free_last_reset"] = now
-        save_user(user_id, user.get("country"), user.get("language"))  # user_id глобал эмес, функция ичинде аныктоо керек
+        save_user(user_id, user.get("country"), user.get("language"))
     return user.get("free_query_count", 0)
 
 def increment_free_query(user_id):
@@ -62,16 +64,15 @@ def increment_free_query(user_id):
         return count
     return 0
 
-# Free лимит текшерүү + реклама
 def check_free_limit(user_id, message):
     user = get_user(user_id)
     if user["plan"] != "free":
         return True
 
-    count = get_free_query_count(user)
+    count = get_free_query_count(user_id)
     if count >= FREE_DAILY_LIMIT:
         reset_time = user.get("free_last_reset", 0) + FREE_RESET_HOURS * 3600
-        remaining = int((reset_time - time.time()) / 3600) if time.time() < reset_time else 0
+        remaining = max(0, int((reset_time - time.time()) / 3600))
         bot.send_message(message.chat.id, escape_markdown(
             f"Досум, Free лимит түгөндү (20 суроо/күн)! 😅\n\n"
             f"4 саат күтсөң – кайра 20 суроо ачылат (же калган {remaining} саат).\n\n"
@@ -110,7 +111,6 @@ def start(message):
     if user and user.get("language"):
         show_menu(message)
         return
-
 # Биринчи жолу – канал сунушу + өлкө тандоо
     channel_text = escape_markdown(
         "🤖 Салам, досум! Мен Tilek AI – сенин күчтүү досуңмун 😎❤️\n\n"
@@ -493,6 +493,10 @@ if __name__ == "__main__":
     time.sleep(5)
     print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
     bot.infinity_polling()
+
+    
+
+
 
     
 
