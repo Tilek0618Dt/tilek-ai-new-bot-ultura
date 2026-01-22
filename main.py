@@ -149,7 +149,7 @@ def show_menu(message):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     kb.add("💬 Суроо берүү", "🌐 Тил өзгөртүү")
     kb.add("🆘 Жардам", "🫂 Реферал")
-    kb.add("⭐️ Premium", "VIP ✨ Video 📸")
+    kb.add("💎 Premium", "VIP ✨ Video 📸")
 
     menu_text = escape_markdown(
         "🌟 *САЛАМ, ДОСУМ! TILEK AI ДАЯР – СЕН ҮЧҮН!* 😎🚀❤️\n\n"
@@ -233,7 +233,7 @@ def handle_referral(message):
     bot.send_message(message.chat.id, text)
 
 # Premium баскычы
-@bot.message_handler(func=lambda m: m.text == "⭐️ Premium")
+@bot.message_handler(func=lambda m: m.text == "💎 Premium")
 def premium(message):
     user = get_user(message.from_user.id)
     lang = user.get("language", "ky") if user else "ky"
@@ -246,7 +246,7 @@ def premium(message):
     kb.add(types.InlineKeyboardButton("🔙 Артка", callback_data="back"))
 
     text = escape_markdown(
-        "⭐️ *PREMIUM КҮЧҮ – ДОСУМ, СЕН ҮЧҮН!* 🔥😎\n\n"
+        "💎 *PREMIUM КҮЧҮ – ДОСУМ, СЕН ҮЧҮН!* 🔥😎\n\n"
         "⭐️ PLUS – безлимит суроо + тез жооп + үн менен сүйлөшүү + сүрөт анализ (8$/ай)\n"
         "👑 PRO – бардык функциялар + видео жасоо + супер үн + сүрөт генерация (18$/ай)\n\n"
         "Төлөм Ecommpay аркылуу – коопсуз жана тез! 🚀\n"
