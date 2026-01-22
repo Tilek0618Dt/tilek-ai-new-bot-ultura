@@ -130,6 +130,42 @@ def start(message):
     else:
         show_menu(message)
 
+    # Реферал – сан кошуу (реалдуу иштейт)
+    if referrer_code and referrer_code.startswith("TILEK"):
+        referrer_id = None
+        for uid, u in users.items():
+            if u.get("referral_code") == referrer_code:
+                referrer_id = int(uid)
+                break
+
+        if referrer_id and referrer_id != user_id:
+            added = add_referral(referrer_id)
+            if added:
+                bot.send_message(user_id, escape_markdown("🎉 Досум, чоң рахмат! Реферал саны жаңыланды – сен легендасың! ❤️"))
+            else:
+                bot.send_message(user_id, escape_markdown("Реферал кошулду, бирок бонус али жок 😅"))
+
+    # Эң маанилүү өзгөртүү: тил тандабаган болсо же маалымат жок болсо – канал + өлкө чыгаруу
+    # Эгер тил бар болсо гана меню чыгат
+    if user is None or user.get("language") is None or user.get("language") == "":
+        # Биринчи жолу – каналга чакыруу + өлкө тандоо (кооз текст)
+        channel_text = escape_markdown(
+            "🌟 *САЛАМ, ДОСУМ! МЕН TILEK AI – СЕНИН КҮЧТҮҮ ДОСУҢМУН!* 😎❤️🚀\n\n"
+            "Боттун бардык күчүн сезүү үчүн менин каналыма милдеттүү катталышың керек!\n"
+            "Катталсаң – жаңылыктар, бонустар, укмуш видео жана сюрприздер биринчи сага келет! 🎁🔥\n\n"
+            "t.me/Tilek_Ai  ← КАНАЛГА КАТТАЛ ДАГЫ КАЙРА /start БАС! ❤️\n\n"
+            "Андан кийин өлкөңүздү тандайсыз – бот ошол тилге өтөт! Сен легендасың 😍🤲🏻"
+        )
+        bot.send_message(message.chat.id, channel_text)
+
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        for code, c in COUNTRIES.items():
+            markup.add(types.InlineKeyboardButton(f"{c['flag']} {c['name']}", callback_data=f"country_{code}"))
+
+        bot.send_message(message.chat.id, escape_markdown("🌍 *ӨЛКӨҢҮЗДҮ ТАНДАҢЫЗ, ДОСУМ!* 😊"), reply_markup=markup)
+    else:
+        show_menu(message)
+
     # Реферал – сан кошуу
     if referrer_code and referrer_code.startswith("TILEK"):
         referrer_id = None
