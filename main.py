@@ -74,17 +74,18 @@ def check_free_limit(user_id, message):
         reset_time = user.get("free_last_reset", 0) + FREE_RESET_HOURS * 3600
         remaining = max(0, int((reset_time - time.time()) / 3600))
         bot.send_message(message.chat.id, escape_markdown(
-            f"Досум, Free лимит түгөндү (20 суроо/күн)! 😅\n\n"
+            f"🚨 *ДОСУМ, FREE ЛИМИТ ТҮГӨНДҮ (20 суроо/күн)!* 😅\n\n"
             f"4 саат күтсөң – кайра 20 суроо ачылат (же калган {remaining} саат).\n\n"
-            "⭐️ Premium сатып алсаң – безлимит + күчтүү функциялар! 8$/ай\n"
-            "👑 PRO – бардык күч! 18$/ай\n\n"
+            "⭐️ *PLUS сатып алсаң – безлимит + күчтүү функциялар!* 8$/ай\n"
+            "👑 *PRO – бардык күч + видео жасоо!* 18$/ай\n\n"
             "https://ecommpay.com/pay?amount=8&description=PLUS+Tilek+AI\n"
-            "https://ecommpay.com/pay?amount=18&description=PRO+Tilek+AI"
+            "https://ecommpay.com/pay?amount=18&description=PRO+Tilek+AI\n\n"
+            "Сен легендасың! Алла жар болсун 🤲🏻❤️"
         ))
         return False
     return True
 
-# 1. /start бассаң – каналга чакыруу + өлкө тандоо (Тилек стилинде)
+# /start – биринчи жолу канал + өлкө тандоо (кооз, адамды тартуучу текст)
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
@@ -93,7 +94,7 @@ def start(message):
 
     user = get_user(user_id)
 
-    # Реферал код менен келгенби? – санды +1 кош (реалдуу иштейт)
+    # Реферал – сан кошуу
     if referrer_code and referrer_code.startswith("TILEK"):
         referrer_id = None
         for uid, u in users.items():
@@ -104,20 +105,18 @@ def start(message):
         if referrer_id and referrer_id != user_id:
             added = add_referral(referrer_id)
             if added:
-                bot.send_message(user_id, escape_markdown("✅ Досум чакырганың үчүн чоң рахмат! Реферал саны жаңыланды! 🎉"))
+                bot.send_message(user_id, escape_markdown("🎉 Досум, чоң рахмат! Реферал саны жаңыланды – сен легендасың! ❤️"))
             else:
                 bot.send_message(user_id, escape_markdown("Реферал кошулду, бирок бонус али жок 😅"))
 
-# Эгер тил тандаган болсоң – меню ачуу, болбосо – канал + өлкө тандоо
-    if user and user.get("language"):
-        show_menu(message)
-    else:
-        # Биринчи жолу – каналга чакыруу + өлкө тандоо (Тилек стилинде кооз текст)
+# Биринчи жолу же тил тандабаган болсо – канал + өлкө
+    if not user or not user.get("language"):
         channel_text = escape_markdown(
-            "🤖 Салам, досум! Мен Tilek AI – сенин күчтүү досуңмун 😎❤️\n\n"
-            "Ботту толук колдонуу үчүн менин каналыма милдеттүү катталышың керек!\n"
-            "Катталсаң – жаңылыктар, бонустар, күчтүү видео жана сюрприздер алдыңкы болуп келет! 🚀\n\n"
-            "t.me/Tilek_Ai  ← Каттал дагы кайра /start бас! ❤️\n\n"
+            "🚀 *САЛАМ, ДОСУМ!* 🤖❤️\n\n"
+            "Мен Tilek AI – сенин күчтүү, кулкулуу жана чынчыл досуңмун 😎\n\n"
+            "Ботту ТОЛУК колдонуу үчүн менин каналыма милдеттүү катталышың керек!\n"
+            "Катталсаң – жаңылыктар, бонустар, күчтүү видео жана сюрприздер алдыңкы болуп келет! 🔥\n\n"
+            "t.me/Tilek_Ai  ← КАНАЛГА КАТТАЛ ДАГЫ КАЙРА /start БАС! ❤️\n\n"
             "Эми өлкөңүздү тандаңыз – бот ошол тилге өтөт! Сен легендасың 😊"
         )
         bot.send_message(message.chat.id, channel_text)
@@ -126,9 +125,11 @@ def start(message):
         for code, c in COUNTRIES.items():
             markup.add(types.InlineKeyboardButton(f"{c['flag']} {c['name']}", callback_data=f"country_{code}"))
 
-        bot.send_message(message.chat.id, escape_markdown("🌍 Өлкөңүздү тандаңыз, досум!"), reply_markup=markup)
+        bot.send_message(message.chat.id, escape_markdown("🌍 *ӨЛКӨҢҮЗДҮ ТАНДАҢЫЗ, ДОСУМ!*"), reply_markup=markup)
+    else:
+        show_menu(message)
 
-# 2. Тил тандоо (өлкө тандаганда) – 100+ өлкө чыгат, иштейт (API'га байланышы жок)
+# Тил тандоо – өлкө тандаганда
 @bot.callback_query_handler(func=lambda c: c.data.startswith("country_"))
 def save_country(call):
     code = call.data.split("_")[1]
@@ -136,12 +137,12 @@ def save_country(call):
     if c:
         lang = c["lang"]
         save_user(call.from_user.id, code, lang)
-        bot.answer_callback_query(call.id, escape_markdown(f"✅ {c['name']} тандалды! Тил: {lang.upper()} – эми баары ошол тилде! 😎"))
+        bot.answer_callback_query(call.id, escape_markdown(f"🎉 {c['name']} ТАНДАЛДЫ! Тил: {lang.upper()} – эми баары ошол тилде! 😎"))
         show_menu(call.message)
     else:
-        bot.send_message(call.message.chat.id, escape_markdown("❌ Ката чыкты, досум! Кайра аракет кыл 😅"))
+        bot.send_message(call.message.chat.id, escape_markdown("❌ Ката чыкты, досум! Кайра бас 😅"))
 
-# 3. Меню кооз версиясы (Тилек стилинде)
+# Меню кооз версиясы
 def show_menu(message):
     user = get_user(message.from_user.id)
     lang = user.get("language", "ky") if user else "ky"
@@ -152,24 +153,51 @@ def show_menu(message):
     kb.add("⭐️ Premium", "VIP ✨ Video 📸")
 
     menu_text = escape_markdown(
-        "🤖 *Tilek AI даяр! Суроо бериңиз 🚀*\n\n"
-        "Tilek AI – сенин күчтүү досуң ❤️\n"
-        "Алла жар болсун! 🤲🏻\n\n"
-        "Досум, кандай жардам керек? 😎"
+        "🚀 *САЛАМ, ДОСУМ! Tilek AI ДАЯР!* 😎\n\n"
+        "Мен сенин күчтүү досуңмун – суроо бер, жардам керекпи? ❤️\n"
+        "Алла жар болсун! 🤲🏻 Сен легендасың!"
     )
 
     bot.send_message(message.chat.id, menu_text, reply_markup=kb)
 
-# 4. Суроо берүү – Free лимит + реклама (20 суроодон кийин)
-@bot.message_handler(content_types=["text"])
-def chat(message):
+# Суроо берүү баскычы – лимит текшерилет
+@bot.message_handler(func=lambda m: m.text == "💬 Суроо берүү")
+def ask_question(message):
     user_id = message.from_user.id
     user = get_user(user_id)
     if not user or not user.get("language"):
         start(message)
         return
 
-    # Free лимит текшер (20 суроо + реклама)
+    if not check_free_limit(user_id, message):
+        return
+
+    bot.send_message(message.chat.id, escape_markdown("Досум, эмне сурайсың? Мен ойлонуп, чындыкты түз айтам 😎\nЖазып жибер! 🚀"))
+
+# Тил өзгөртүү баскычы – өлкө менюсу чыгат
+@bot.message_handler(func=lambda m: m.text == "🌐 Тил өзгөртүү")
+def change_language(message):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    for code, c in COUNTRIES.items():
+        markup.add(types.InlineKeyboardButton(f"{c['flag']} {c['name']}", callback_data=f"country_{code}"))
+
+    bot.send_message(message.chat.id, escape_markdown("🌍 *Досум, жаңы тил танда!*\nКайсы өлкөнү каалайсың? 😊"), reply_markup=markup)
+
+# Суроо берүү – текст келгенде (лимити текшерилет)
+@bot.message_handler(content_types=["text"])
+def chat(message):
+    text = message.text.strip()
+
+    # Меню баскычтарын өткөрүп жибер (лимити текшербейт)
+    if text in ["🌐 Тил өзгөртүү", "🆘 Жардам", "🫂 Реферал", "⭐️ Premium", "VIP ✨ Video 📸"]:
+        return
+
+    user_id = message.from_user.id
+    user = get_user(user_id)
+    if not user or not user.get("language"):
+        start(message)
+        return
+
     if not check_free_limit(user_id, message):
         return
 
@@ -180,8 +208,7 @@ def chat(message):
 
     is_pro_user = is_pro(user)
 
-    # Grok жооп – API жок болсо да иштейт (убактылуу текст)
-    answer = grok_answer(message.text, lang=lang, is_pro=is_pro_user)
+    answer = grok_answer(text, lang=lang, is_pro=is_pro_user)
 
     if is_plus(user):
         answer += f"\n\n⭐️ PLUS режимде иштейм – безлимит! 🚀"
@@ -193,10 +220,9 @@ def chat(message):
     answer = escape_markdown(answer)
     bot.send_message(message.chat.id, answer)
 
-    # Free лимитти +1 кошу
     increment_free_query(user_id)
 
-# Үн менен сүйлөшүү (PLUS/Pro) – эски код сакталды
+# Үн менен сүйлөшүү (PLUS/Pro)
 @bot.message_handler(content_types=['voice'])
 def handle_voice(message):
     user = get_user(message.from_user.id)
@@ -251,7 +277,7 @@ def handle_voice(message):
     except Exception as e:
         bot.send_message(message.chat.id, escape_markdown(f"Досум, үн менен ката чыкты: {str(e)}\nТекст жазып көр, мен жардам берем! 😎"))
 
-# Видео генерация (PRO үчүн) – эски код сакталды
+# Видео генерация (PRO үчүн)
 @bot.message_handler(func=lambda m: is_pro(get_user(m.from_user.id)) and ("видео" in m.text.lower() or m.text.startswith("/video")))
 def handle_video(message):
     user = get_user(message.from_user.id)
@@ -284,7 +310,7 @@ def handle_video(message):
     except Exception as e:
         bot.send_message(message.chat.id, escape_markdown(f"Видео менен ката: {str(e)}\nPRO функциясы күчтүүрөөк, төлөп ал! 🚀"))
 
-# Видео анализ (PRO үчүн) – эски код сакталды
+# Видео анализ (PRO үчүн)
 @bot.message_handler(content_types=['video'])
 def handle_video_analysis(message):
     user = get_user(message.from_user.id)
@@ -310,7 +336,7 @@ def handle_video_analysis(message):
     except Exception as e:
         bot.send_message(message.chat.id, escape_markdown(f"Видео талдоо менен ката: {str(e)}\nКайра аракет кыл, досум 😅"))
 
-# Сүрөт тануу + анализ (PLUS/Pro) – эски код сакталды
+# Сүрөт тануу + анализ (PLUS/Pro)
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
     user = get_user(message.from_user.id)
@@ -335,7 +361,7 @@ def handle_photo(message):
     except Exception as e:
         bot.send_message(message.chat.id, escape_markdown(f"Сүрөт талдоо менен ката: {str(e)}\nКайра аракет кыл, досум 😅"))
 
-# Сүрөт жасоо (PRO үчүн) – эски код сакталды
+# Сүрөт жасоо (PRO үчүн)
 @bot.message_handler(func=lambda m: is_pro(get_user(m.from_user.id)) and m.text.startswith("/image"))
 def handle_image_gen(message):
     user = get_user(message.from_user.id)
@@ -353,7 +379,7 @@ def handle_image_gen(message):
     except Exception as e:
         bot.send_message(message.chat.id, escape_markdown(f"Сүрөт жасоо менен ката: {str(e)}\nPRO функциясы күчтүүрөөк! 🔥"))
 
-# Интернет издөө (PRO үчүн) – эски код сакталды
+# Интернет издөө (PRO үчүн)
 @bot.message_handler(func=lambda m: is_pro(get_user(m.from_user.id)) and ("?" in m.text or "издөө" in m.text.lower()))
 def handle_search(message):
     user = get_user(message.from_user.id)
@@ -367,7 +393,7 @@ def handle_search(message):
     except Exception as e:
         bot.send_message(message.chat.id, escape_markdown(f"Издөө менен ката: {str(e)}\nPRO менен күчтүү издөө! 😎"))
 
-# 2. Реферал менюсу – реалдуу иштейт (сан өзгөрөт, 5ке жеткенде PLUS)
+# Реферал менюсу – реалдуу иштейт
 @bot.message_handler(func=lambda m: "Реферал" in m.text or "🫂" in m.text)
 def handle_referral(message):
     user_id = message.from_user.id
@@ -399,12 +425,12 @@ def handle_referral(message):
 
     bot.send_message(message.chat.id, text)
 
-# /ref командасын толук өчүрүү
+# /ref командасын өчүрүү
 @bot.message_handler(commands=['ref', 'referral'])
 def ignore_ref(message):
     pass
 
-# VIP ✨ Video 📸 – ECOMMPAY МЕНЕН (эски код сакталды)
+# VIP ✨ Video 📸
 @bot.message_handler(func=lambda m: "VIP" in m.text and "Video" in m.text)
 def handle_vip_video(message):
     user = get_user(message.from_user.id)
@@ -452,7 +478,7 @@ def back_to_menu(call):
     bot.answer_callback_query(call.id)
     show_menu(call.message)
 
-# ЖАҢЫ ЖАРДАМ МЕНЮСУ – 2 АДМИН МЕНЕН (Тилек стилинде)
+# Жардам
 @bot.message_handler(func=lambda m: "Жардам" in m.text or "🆘" in m.text)
 def handle_help(message):
     user = get_user(message.from_user.id)
@@ -469,7 +495,7 @@ def handle_help(message):
 
     bot.send_message(message.chat.id, help_text)
 
-# PREMIUM МЕНЮСУ – ECOMMPAY СЫЛКАСЫ МЕНЕН (Тилек стилинде)
+# Premium
 @bot.message_handler(func=lambda m: m.text == "⭐️ Premium")
 def premium(message):
     user = get_user(message.from_user.id)
@@ -490,12 +516,14 @@ def premium(message):
         "Төлөсөң – дароо активдештирем, досум! Сен легендасың ❤️"
     )
 
-    bot.send_message(message.chat.id, text, reply_markup=kb
+    bot.send_message(message.chat.id, text, reply_markup=kb)
 
 if __name__ == "__main__":
     time.sleep(5)
     print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
     bot.infinity_polling()
+
+
 
                      
 
