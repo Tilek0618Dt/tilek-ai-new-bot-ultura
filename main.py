@@ -85,7 +85,7 @@ def check_free_limit(user_id, message):
         return False
     return True
 
-# /start – биринчи жолу канал + өлкө тандоо (кооз текст)
+# 1. /start – биринчи жолу канал + өлкө тандоо (кооз текст, чоң тамга, адамды тартуучу)
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
@@ -94,7 +94,7 @@ def start(message):
 
     user = get_user(user_id)
 
-    # Реферал – сан кошуу
+    # Реферал – сан кошуу (реалдуу иштейт)
     if referrer_code and referrer_code.startswith("TILEK"):
         referrer_id = None
         for uid, u in users.items():
@@ -129,7 +129,7 @@ def start(message):
     else:
         show_menu(message)
 
-# Тил тандоо – өлкө тандаганда
+# 2. Тил тандоо – 100+ өлкө чыгат, тандасаң тил өзгөрөт
 @bot.callback_query_handler(func=lambda c: c.data.startswith("country_"))
 def save_country(call):
     code = call.data.split("_")[1]
@@ -142,7 +142,7 @@ def save_country(call):
     else:
         bot.send_message(call.message.chat.id, escape_markdown("❌ Ката чыкты, досум! Кайра бас 😅"))
 
-# Меню кооз версиясы
+# 3. Меню кооз версиясы (Тилек стилинде)
 def show_menu(message):
     user = get_user(message.from_user.id)
     lang = user.get("language", "ky") if user else "ky"
@@ -160,7 +160,7 @@ def show_menu(message):
 
     bot.send_message(message.chat.id, menu_text, reply_markup=kb)
 
-# Суроо берүү баскычы – лимит текшерилет
+# 4. Суроо берүү баскычы – лимит текшерилет
 @bot.message_handler(func=lambda m: m.text == "💬 Суроо берүү")
 def ask_question(message):
     user_id = message.from_user.id
@@ -174,7 +174,7 @@ def ask_question(message):
 
     bot.send_message(message.chat.id, escape_markdown("Досум, эмне сурайсың? Мен ойлонуп, чындыкты түз айтам 😎\nЖазып жибер! 🚀"))
 
-# Тил өзгөртүү баскычы – өлкө менюсу чыгат
+# 5. Тил өзгөртүү баскычы – 100+ өлкө чыгат
 @bot.message_handler(func=lambda m: m.text == "🌐 Тил өзгөртүү")
 def change_language(message):
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -183,44 +183,127 @@ def change_language(message):
 
     bot.send_message(message.chat.id, escape_markdown("🌍 *Досум, жаңы тил танда!*\nКайсы өлкөнү каалайсың? 😊"), reply_markup=markup)
 
-# Суроо берүү – текст келгенде (лимити текшерилет)
-@bot.message_handler(content_types=["text"])
-def chat(message):
-    text = message.text.strip()
+# 6. Жардам баскычы – админдер чыгат
+@bot.message_handler(func=lambda m: "Жардам" in m.text or "🆘" in m.text)
+def handle_help(message):
+    user = get_user(message.from_user.id)
+    lang = user.get("language", "ky") if user else "ky"
 
-    # Меню баскычтарын өткөрүп жибер (лимити текшербейт)
-    if text in ["🌐 Тил өзгөртүү", "🆘 Жардам", "🫂 Реферал", "⭐️ Premium", "VIP ✨ Video 📸"]:
-        return
+    help_text = escape_markdown(
+        "🆘 *Жардам панели*\n\n"
+        "Боттун бардык функциялары жөнүндө сурооңуз болсо – мен дайым жардам берем! 😎\n\n"
+        "Админ менен байланыш:\n"
+        "1) @Mentor_006T – жардам берүүчү легенда! 🚀\n"
+        "2) @Timka_Bro999 – күчтүү колдоо жана кеңештер! ❤️\n\n"
+        "Кандай жардам керек, досум? Жазсаң – дароо жооп берем! Сен легендасың 🤲🏻"
+    )
 
+    bot.send_message(message.chat.id, help_text)
+
+# 7. Реферал баскычы – сылка + сан чыгат
+@bot.message_handler(func=lambda m: "Реферал" in m.text or "🫂" in m.text)
+def handle_referral(message):
     user_id = message.from_user.id
     user = get_user(user_id)
-    if not user or not user.get("language"):
-        start(message)
+    if not user:
+        bot.send_message(message.chat.id, escape_markdown("Досум, биринчи /start бас, анан рефералды көр! 😅"))
         return
 
-    if not check_free_limit(user_id, message):
+    lang = user.get("language", "ky")
+    code = get_referral_code(user_id)
+    referral_count = user.get("referral_count", 0)
+
+    bonus_msg = ""
+    if referral_count >= 5 and not user.get("plus_bonus_activated", False):
+        set_plan(user_id, "plus")
+        user["plus_bonus_activated"] = True
+        user["plus_bonus_until"] = int(time.time()) + 7 * 24 * 3600
+        save_user(user_id, user.get("country"), lang)
+        bonus_msg = escape_markdown(f"\n\n✅ *5 дос чакырдың, досум! 🎉*\n1 жума бекер PLUS ачылды! Сен легендасың ❤️🚀")
+
+    text = escape_markdown(
+        f"🫂 *Досум, досторуңду чакыр! 😎*\n\n"
+        f"Ботко: https://t.me/tilek_ai_bot?start={code}\n"
+        f"Каналга: https://t.me/Tilek_Ai\n\n"
+        f"5 дос чакырсаң – 1 жума бекер PLUS ачылат! 🔥\n"
+        f"*Азыр реферал саның: {referral_count}/5*\n"
+        f"{bonus_msg}"
+    )
+
+    bot.send_message(message.chat.id, text)
+
+# 8. Premium баскычы – сатып алуу сылкалары чыгат
+@bot.message_handler(func=lambda m: m.text == "⭐️ Premium")
+def premium(message):
+    user = get_user(message.from_user.id)
+    lang = user.get("language", "ky") if user else "ky"
+
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        types.InlineKeyboardButton("⭐️ PLUS – 8$/ай", url="https://ecommpay.com/pay?amount=8&description=PLUS+Tilek+AI"),
+        types.InlineKeyboardButton("👑 PRO – 18$/ай", url="https://ecommpay.com/pay?amount=18&description=PRO+Tilek+AI")
+    )
+    kb.add(types.InlineKeyboardButton("🔙 Артка", callback_data="back"))
+
+    text = escape_markdown(
+        "⭐️ *Premium функциялар*\n\n"
+        "⭐️ PLUS – безлимит + тез жооп + үн менен сүйлөшүү + сүрөт анализ (8$/ай)\n"
+        "👑 PRO – бардык функциялар + видео генерация + супер үн + сүрөт жасоо (18$/ай)\n\n"
+        "Төлөм Ecommpay аркылуу – коопсуз жана тез! 🚀\n"
+        "Төлөсөң – дароо активдештирем, досум! Сен легендасың ❤️"
+    )
+
+    bot.send_message(message.chat.id, text, reply_markup=kb)
+
+# 9. VIP Video баскычы – видео пакеттери чыгат
+@bot.message_handler(func=lambda m: "VIP" in m.text and "Video" in m.text)
+def handle_vip_video(message):
+    user = get_user(message.from_user.id)
+    if not user:
+        bot.send_message(message.chat.id, escape_markdown("Досум, биринчи /start бас, анан VIP видео көр! 😅"))
         return
 
-    lang = user["language"]
-    bonus_msg = check_bonus(user_id)
-    if bonus_msg:
-        bot.send_message(message.chat.id, escape_markdown(bonus_msg))
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        types.InlineKeyboardButton("1 видео (30–60 сек) – 14.99$", url="https://ecommpay.com/pay?amount=14.99&description=VIP+Video+1"),
+        types.InlineKeyboardButton("3 видео пакети – 35$ (скидка)", url="https://ecommpay.com/pay?amount=35&description=VIP+Video+3"),
+        types.InlineKeyboardButton("5 видео пакети – 55$ (чоң скидка)", url="https://ecommpay.com/pay?amount=55&description=VIP+Video+5")
+    )
+    kb.add(types.InlineKeyboardButton("🔙 Артка", callback_data="back_menu"))
 
-    is_pro_user = is_pro(user)
+    vip_text = escape_markdown(
+        "Досум, VIP ✨ Video 📸 – кино стилиндеги күчтүү видео! 🔥\n"
+        "Реклама, Инстаграм, блог, TikTok үчүн идеалдуу. Кайсы пакетти тандайсың? 😎\n\n"
+        "Төлөм Ecommpay аркылуу – коопсуз, тез жана ыңгайлуу!\n"
+        "Төлөсөң – дароо укмуш видеоң даяр болот! 🎥❤️"
+    )
 
-    answer = grok_answer(text, lang=lang, is_pro=is_pro_user)
+    bot.send_message(message.chat.id, vip_text, reply_markup=kb)
 
-    if is_plus(user):
-        answer += f"\n\n⭐️ PLUS режимде иштейм – безлимит! 🚀"
-    if is_pro(user):
-        answer += f"\n\n👑 PRO режимде иштейм – бардык күч! 🔥"
+# VIP төлөм callback
+@bot.callback_query_handler(func=lambda c: c.data.startswith("vip_"))
+def process_vip_payment(call):
+    package = call.data.split("_")[1]
+    prices = {"1": 14.99, "3": 35.00, "5": 55.00}
+    amount = prices.get(package, 14.99)
+    bot.answer_callback_query(call.id)
 
-    answer = f"😎 *Досум, мен ойлонуп көрүп, чындыкты түз айтайын:* {answer}\n\nСен легендасың! Алла жар болсун! 🤲🏻❤️"
+    payment_link = f"https://ecommpay.com/pay?amount={amount}&description=VIP+Video+{package}"
 
-    answer = escape_markdown(answer)
-    bot.send_message(message.chat.id, answer)
+    payment_text = escape_markdown(
+        f"Досум, төлөм линк даяр! 🚀\n"
+        f"Сумма: {amount}$\n"
+        f"Төлөм жасагандан кийин видеоң дароо жасалат (30–60 сек, кино сапаты)! 🎥\n\n"
+        f"[Төлөмгө өтүү →]({payment_link})"
+    )
 
-    increment_free_query(user_id)
+    bot.send_message(call.message.chat.id, payment_text)
+
+# Артка баскычы
+@bot.callback_query_handler(func=lambda c: c.data == "back_menu")
+def back_to_menu(call):
+    bot.answer_callback_query(call.id)
+    show_menu(call.message)
 
 # Үн менен сүйлөшүү (PLUS/Pro)
 @bot.message_handler(content_types=['voice'])
@@ -305,7 +388,6 @@ def handle_video(message):
         if "video_url" in result:
             bot.send_video(message.chat.id, result["video_url"])
             bot.send_message(message.chat.id, escape_markdown("Досум, видеоң даяр! Сен легендасың! 🎉"))
-
         else:
             bot.send_message(message.chat.id, escape_markdown(f"Ката чыкты, досум: {result.get('error', 'Билбейм')}\nКайра аракет кыл 😅"))
     except Exception as e:
@@ -394,135 +476,17 @@ def handle_search(message):
     except Exception as e:
         bot.send_message(message.chat.id, escape_markdown(f"Издөө менен ката: {str(e)}\nPRO менен күчтүү издөө! 😎"))
 
-# Реферал менюсу – реалдуу иштейт
-@bot.message_handler(func=lambda m: "Реферал" in m.text or "🫂" in m.text)
-def handle_referral(message):
-    user_id = message.from_user.id
-    user = get_user(user_id)
-    if not user:
-        bot.send_message(message.chat.id, escape_markdown("Досум, биринчи /start бас, анан рефералды көр! 😅"))
-        return
-
-    lang = user.get("language", "ky")
-    code = get_referral_code(user_id)
-    referral_count = user.get("referral_count", 0)
-
-    bonus_msg = ""
-    if referral_count >= 5 and not user.get("plus_bonus_activated", False):
-        set_plan(user_id, "plus")
-        user["plus_bonus_activated"] = True
-        user["plus_bonus_until"] = int(time.time()) + 7 * 24 * 3600
-        save_user(user_id, user.get("country"), lang)
-        bonus_msg = escape_markdown(f"\n\n✅ *5 дос чакырдың, досум! 🎉*\n1 жума бекер PLUS ачылды! Сен легендасың ❤️🚀")
-
-    text = escape_markdown(
-        f"🫂 *Досум, досторуңду чакыр! 😎*\n\n"
-        f"Ботко: https://t.me/tilek_ai_bot?start={code}\n"
-        f"Каналга: https://t.me/Tilek_Ai\n\n"
-        f"5 дос чакырсаң – 1 жума бекер PLUS ачылат! 🔥\n"
-        f"*Азыр реферал саның: {referral_count}/5*\n"
-        f"{bonus_msg}"
-    )
-
-    bot.send_message(message.chat.id, text)
-
 # /ref командасын өчүрүү
 @bot.message_handler(commands=['ref', 'referral'])
 def ignore_ref(message):
     pass
 
-# VIP ✨ Video 📸
-@bot.message_handler(func=lambda m: "VIP" in m.text and "Video" in m.text)
-def handle_vip_video(message):
-    user = get_user(message.from_user.id)
-    if not user:
-        bot.send_message(message.chat.id, escape_markdown("Досум, биринчи /start бас, анан VIP видео көр! 😅"))
-        return
-
-    kb = types.InlineKeyboardMarkup(row_width=1)
-    kb.add(
-        types.InlineKeyboardButton("1 видео (30–60 сек) – 14.99$", url="https://ecommpay.com/pay?amount=14.99&description=VIP+Video+1"),
-        types.InlineKeyboardButton("3 видео пакети – 35$ (скидка)", url="https://ecommpay.com/pay?amount=35&description=VIP+Video+3"),
-        types.InlineKeyboardButton("5 видео пакети – 55$ (чоң скидка)", url="https://ecommpay.com/pay?amount=55&description=VIP+Video+5")
-    )
-    kb.add(types.InlineKeyboardButton("🔙 Артка", callback_data="back_menu"))
-
-    vip_text = escape_markdown(
-        "Досум, VIP ✨ Video 📸 – кино стилиндеги күчтүү видео! 🔥\n"
-        "Реклама, Инстаграм, блог, TikTok үчүн идеалдуу. Кайсы пакетти тандайсың? 😎\n\n"
-        "Төлөм Ecommpay аркылуу – коопсуз, тез жана ыңгайлуу!\n"
-        "Төлөсөң – дароо укмуш видеоң даяр болот! 🎥❤️"
-    )
-
-    bot.send_message(message.chat.id, vip_text, reply_markup=kb)
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("vip_"))
-def process_vip_payment(call):
-    package = call.data.split("_")[1]
-    prices = {"1": 14.99, "3": 35.00, "5": 55.00}
-    amount = prices.get(package, 14.99)
-    bot.answer_callback_query(call.id)
-
-    payment_link = f"https://ecommpay.com/pay?amount={amount}&description=VIP+Video+{package}"
-
-    payment_text = escape_markdown(
-        f"Досум, төлөм линк даяр! 🚀\n"
-        f"Сумма: {amount}$\n"
-        f"Төлөм жасагандан кийин видеоң дароо жасалат (30–60 сек, кино сапаты)! 🎥\n\n"
-        f"[Төлөмгө өтүү →]({payment_link})"
-    )
-
-    bot.send_message(call.message.chat.id, payment_text)
-
-@bot.callback_query_handler(func=lambda c: c.data == "back_menu")
-def back_to_menu(call):
-    bot.answer_callback_query(call.id)
-    show_menu(call.message)
-
-# Жардам баскычы
-@bot.message_handler(func=lambda m: "Жардам" in m.text or "🆘" in m.text)
-def handle_help(message):
-    user = get_user(message.from_user.id)
-    lang = user.get("language", "ky") if user else "ky"
-
-    help_text = escape_markdown(
-        "🆘 *Жардам панели*\n\n"
-        "Боттун бардык функциялары жөнүндө сурооңуз болсо – мен дайым жардам берем! 😎\n\n"
-        "Админ менен байланыш:\n"
-        "1) @Mentor_006T – жардам берүүчү легенда! 🚀\n"
-        "2) @Timka_Bro999 – күчтүү колдоо жана кеңештер! ❤️\n\n"
-        "Кандай жардам керек, досум? Жазсаң – дароо жооп берем! Сен легендасың 🤲🏻"
-    )
-
-    bot.send_message(message.chat.id, help_text)
-
-# Premium баскычы
-@bot.message_handler(func=lambda m: m.text == "⭐️ Premium")
-def premium(message):
-    user = get_user(message.from_user.id)
-    lang = user.get("language", "ky") if user else "ky"
-
-    kb = types.InlineKeyboardMarkup(row_width=1)
-    kb.add(
-        types.InlineKeyboardButton("⭐️ PLUS – 8$/ай", url="https://ecommpay.com/pay?amount=8&description=PLUS+Tilek+AI"),
-        types.InlineKeyboardButton("👑 PRO – 18$/ай", url="https://ecommpay.com/pay?amount=18&description=PRO+Tilek+AI")
-    )
-    kb.add(types.InlineKeyboardButton("🔙 Артка", callback_data="back"))
-
-    text = escape_markdown(
-        "⭐️ *Premium функциялар*\n\n"
-        "⭐️ PLUS – безлимит + тез жооп + үн менен сүйлөшүү + сүрөт анализ (8$/ай)\n"
-        "👑 PRO – бардык функциялар + видео генерация + супер үн + сүрөт жасоо (18$/ай)\n\n"
-        "Төлөм Ecommpay аркылуу – коопсуз жана тез! 🚀\n"
-        "Төлөсөң – дароо активдештирем, досум! Сен легендасың ❤️"
-    )
-
-    bot.send_message(message.chat.id, text, reply_markup=kb)
-
 if __name__ == "__main__":
     time.sleep(5)
     print("🔥 Tilek AI ишке кирди – Grok күчү менен + бардык функциялар + VIP Video! Досум, сен легендасың!")
     bot.infinity_polling()
+
+
 
 
 
