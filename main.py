@@ -85,7 +85,7 @@ def check_free_limit(user_id, message):
         return False
     return True
 
-# /start – биринчи жолу канал + өлкө тандоо (кооз, адамды тартуучу текст)
+# /start – биринчи жолу канал + өлкө тандоо (кооз текст)
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
@@ -109,7 +109,7 @@ def start(message):
             else:
                 bot.send_message(user_id, escape_markdown("Реферал кошулду, бирок бонус али жок 😅"))
 
-# Биринчи жолу же тил тандабаган болсо – канал + өлкө
+# Биринчи жолу же тил тандабаган болсо – канал + өлкө чыгаруу
     if not user or not user.get("language"):
         channel_text = escape_markdown(
             "🚀 *САЛАМ, ДОСУМ!* 🤖❤️\n\n"
@@ -305,6 +305,7 @@ def handle_video(message):
         if "video_url" in result:
             bot.send_video(message.chat.id, result["video_url"])
             bot.send_message(message.chat.id, escape_markdown("Досум, видеоң даяр! Сен легендасың! 🎉"))
+
         else:
             bot.send_message(message.chat.id, escape_markdown(f"Ката чыкты, досум: {result.get('error', 'Билбейм')}\nКайра аракет кыл 😅"))
     except Exception as e:
@@ -478,7 +479,7 @@ def back_to_menu(call):
     bot.answer_callback_query(call.id)
     show_menu(call.message)
 
-# Жардам
+# Жардам баскычы
 @bot.message_handler(func=lambda m: "Жардам" in m.text or "🆘" in m.text)
 def handle_help(message):
     user = get_user(message.from_user.id)
@@ -495,7 +496,7 @@ def handle_help(message):
 
     bot.send_message(message.chat.id, help_text)
 
-# Premium
+# Premium баскычы
 @bot.message_handler(func=lambda m: m.text == "⭐️ Premium")
 def premium(message):
     user = get_user(message.from_user.id)
@@ -524,35 +525,6 @@ if __name__ == "__main__":
     bot.infinity_polling()
 
 
-
-                     
-
-
-
-    
-
-
-
-    
-
-
-
-
-
-
-
-
-
-        
-
-
-    
-
-
-
-
-
-    
 
 
 
